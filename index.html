@@ -66,10 +66,7 @@
 
         /* Styles for the magnifier popover */
         #magnifier-popover {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            /* Position is now set dynamically via JS */
             z-index: 200;
             background-color: white;
             border: 1px solid #94a3b8; /* slate-400 */
@@ -140,42 +137,40 @@
                 </div>
             </div>
 
-            <!-- 2. Search Terms Input -->
+            <!-- 2. Search Terms Input & Action -->
             <div class="mb-4">
-                <label for="search-terms-input" class="block text-lg font-semibold text-slate-600 mb-2">2. Enter Search Terms</label>
-                <textarea id="search-terms-input" rows="3" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g. P.001, P.002, PIPE LEGEND"></textarea>
-                <p class="text-xs text-slate-500 mt-1">Separate each search term with a comma. Press Enter to search.</p>
+                <label for="search-terms-input" class="block text-lg font-semibold text-slate-600 mb-2">2. Enter Search Terms & Find Pages</label>
+                <div class="flex items-start space-x-2">
+                    <textarea id="search-terms-input" rows="3" class="flex-grow p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g. P.001, P.002, PIPE LEGEND"></textarea>
+                    <button id="run-search-btn" class="flex-shrink-0 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center text-lg disabled:bg-slate-400 disabled:cursor-not-allowed h-full">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        Find
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Separate terms with a comma. Press Enter to search (Shift+Enter for a new line).</p>
             </div>
             
-            <!-- 3. Run Search -->
-            <div class="mt-6">
-                <button id="run-search-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center text-lg disabled:bg-slate-400 disabled:cursor-not-allowed">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    Find Pages
-                </button>
-            </div>
-
-            <!-- 4. Collaborative Search Groups -->
+            <!-- 3. Collaborative Search Groups -->
             <div class="border-t border-slate-200 pt-4 mt-6">
                  <label class="block text-lg font-semibold text-slate-600 mb-2">3. Manage Shared Search Groups</label>
                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <div>
-                           <label for="search-groups-dropdown" class="text-sm font-medium text-slate-600">Load a saved group:</label>
-                           <div class="flex items-center space-x-2 mt-1">
-                               <select id="search-groups-dropdown" class="w-full p-2 border border-slate-300 rounded-md bg-white"></select>
-                               <button id="load-group-btn" title="Load Selected Group" class="p-2 bg-slate-200 hover:bg-slate-300 rounded-md">
-                                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75 12 3m0 0 3.75 3.75M12 3v18" /></svg>
-                               </button>
-                               <button id="delete-group-btn" title="Delete Selected Group" class="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-md"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                           </div>
-                       </div>
-                       <div>
-                           <label for="new-group-name" class="text-sm font-medium text-slate-600">Save current search as a group:</label>
-                           <div class="flex items-center space-x-2 mt-1">
-                               <input type="text" id="new-group-name" placeholder="Group Name" class="w-full p-2 border border-slate-300 rounded-md">
-                               <button id="save-group-btn" title="Save Current Terms" class="p-2 bg-green-500 hover:bg-green-600 text-white rounded-md"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg></button>
-                           </div>
-                       </div>
+                         <div>
+                             <label for="search-groups-dropdown" class="text-sm font-medium text-slate-600">Load a saved group:</label>
+                             <div class="flex items-center space-x-2 mt-1">
+                                 <select id="search-groups-dropdown" class="w-full p-2 border border-slate-300 rounded-md bg-white"></select>
+                                 <button id="load-group-btn" title="Load Selected Group" class="p-2 bg-slate-200 hover:bg-slate-300 rounded-md">
+                                      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75 12 3m0 0 3.75 3.75M12 3v18" /></svg>
+                                 </button>
+                                 <button id="delete-group-btn" title="Delete Selected Group" class="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-md"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                             </div>
+                         </div>
+                         <div>
+                             <label for="new-group-name" class="text-sm font-medium text-slate-600">Save current search as a group:</label>
+                             <div class="flex items-center space-x-2 mt-1">
+                                 <input type="text" id="new-group-name" placeholder="Group Name" class="w-full p-2 border border-slate-300 rounded-md">
+                                 <button id="save-group-btn" title="Save Current Terms" class="p-2 bg-green-500 hover:bg-green-600 text-white rounded-md"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg></button>
+                             </div>
+                         </div>
                  </div>
             </div>
         </div>
@@ -184,9 +179,15 @@
         <div id="parsed-index-container" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <h2 class="text-2xl font-bold text-slate-700">Parsed Index</h2>
-                <button id="add-selected-index-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center">
-                    Add Selected to Results
-                </button>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <input id="select-all-index-checkbox" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="select-all-index-checkbox" class="ml-2 text-sm font-medium text-slate-700">Select All</label>
+                    </div>
+                    <button id="add-selected-index-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center">
+                        Add Selected to Results
+                    </button>
+                </div>
             </div>
             <div id="parsed-index-output" class="space-y-2 max-h-96 overflow-y-auto">
                 <p class="text-slate-500">Select an area from the PDF to parse an index.</p>
@@ -203,25 +204,16 @@
                    </button>
              </div>
                <div id="results-summary"></div>
-               <!-- Page Adders -->
-               <div id="page-adders-container" class="hidden mt-4 pt-4 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-               <div>
-                   <h3 class="text-lg font-semibold text-slate-600 mb-2">Add a Range</h3>
-                   <div class="flex items-center space-x-2">
-                         <input type="number" id="range-start-input" placeholder="Start" class="w-full p-2 border border-slate-300 rounded-md">
-                         <span class="text-slate-500 font-bold">-</span>
-                         <input type="number" id="range-end-input" placeholder="End" class="w-full p-2 border border-slate-300 rounded-md">
-                         <button id="add-range-btn" class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-semibold px-4">Add</button>
-                   </div>
-               </div>
-               <div>
-                   <h3 class="text-lg font-semibold text-slate-600 mb-2">Add a Page</h3>
-                   <div class="flex items-center space-x-2">
-                         <input type="number" id="add-page-input" placeholder="Page #" class="w-full p-2 border border-slate-300 rounded-md">
-                         <button id="add-page-btn" class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-semibold px-4">Add</button>
-                   </div>
-               </div>
-               </div>
+               <!-- Page Modifiers -->
+               <div id="page-modifiers-container" class="hidden mt-4 pt-4 border-t border-slate-200">
+                    <h3 class="text-lg font-semibold text-slate-600 mb-2">Add or Remove Pages</h3>
+                    <p class="text-xs text-slate-500 mb-2">Use formats like "5", "1-10", or "2, 5-7, 12".</p>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="multi-page-input" placeholder="e.g., 1-5, 8, 11-13" class="w-full p-2 border border-slate-300 rounded-md">
+                        <button id="add-pages-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-semibold flex-shrink-0">Add</button>
+                        <button id="remove-pages-btn" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md font-semibold flex-shrink-0">Remove</button>
+                    </div>
+                </div>
                <div id="results-output" class="flex overflow-x-auto space-x-6 p-4 bg-slate-50 rounded-lg mt-6">
                      <p class="w-full px-2 col-span-full">Search results will appear here.</p>
                </div>
@@ -261,14 +253,14 @@
                     </div>
                     <div class="flex items-center space-x-2">
                         <button id="zoom-out-btn" title="Zoom Out" class="p-2 bg-slate-200 hover:bg-slate-300 rounded-md">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6" /></svg>
+                             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6" /></svg>
                         </button>
                         <span id="zoom-display" class="font-mono text-sm text-slate-600 w-12 text-center">100%</span>
                         <button id="zoom-in-btn" title="Zoom In" class="p-2 bg-slate-200 hover:bg-slate-300 rounded-md">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" /></svg>
+                             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" /></svg>
                         </button>
                         <button id="zoom-fit-btn" title="Fit to Width" class="p-2 bg-slate-200 hover:bg-slate-300 rounded-md">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M20.25 20.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
+                             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M20.25 20.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
                         </button>
                     </div>
                     <button id="parse-selection-btn" class="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-md font-semibold disabled:bg-slate-400" disabled>Parse Selection</button>
@@ -308,12 +300,10 @@
         const saveGroupBtn = document.getElementById('save-group-btn');
         const loadGroupBtn = document.getElementById('load-group-btn');
         const deleteGroupBtn = document.getElementById('delete-group-btn');
-        const pageAddersContainer = document.getElementById('page-adders-container');
-        const rangeStartInput = document.getElementById('range-start-input');
-        const rangeEndInput = document.getElementById('range-end-input');
-        const addRangeBtn = document.getElementById('add-range-btn');
-        const addPageInput = document.getElementById('add-page-input');
-        const addPageBtn = document.getElementById('add-page-btn');
+        const pageModifiersContainer = document.getElementById('page-modifiers-container');
+        const multiPageInput = document.getElementById('multi-page-input');
+        const addPagesBtn = document.getElementById('add-pages-btn');
+        const removePagesBtn = document.getElementById('remove-pages-btn');
         const notificationContainer = document.getElementById('notification-container');
         const confirmationModal = document.getElementById('confirmation-modal');
         const confirmationTitle = document.getElementById('confirmation-title');
@@ -335,6 +325,7 @@
         const parsedIndexContainer = document.getElementById('parsed-index-container');
         const parsedIndexOutput = document.getElementById('parsed-index-output');
         const addSelectedIndexBtn = document.getElementById('add-selected-index-btn');
+        const selectAllIndexCheckbox = document.getElementById('select-all-index-checkbox');
         const zoomOutBtn = document.getElementById('zoom-out-btn');
         const zoomInBtn = document.getElementById('zoom-in-btn');
         const zoomFitBtn = document.getElementById('zoom-fit-btn');
@@ -368,13 +359,13 @@
             try {
                 // Hardcoded Firebase config from the working script
                 const firebaseConfig = {
-                      apiKey: "AIzaSyA6Yp2_XzVqnI3DtVUV_Ianqegch8LpHNo",
-                      authDomain: "planshift-7ebb2.firebaseapp.com",
-                      projectId: "planshift-7ebb2",
-                      storageBucket: "planshift-7ebb2.firebasestorage.app",
-                      messagingSenderId: "902958199212",
-                      appId: "1:902958199212:web:49e8197780ecb1916d4a09",
-                      measurementId: "G-44R7BP8278"
+                        apiKey: "AIzaSyA6Yp2_XzVqnI3DtVUV_Ianqegch8LpHNo",
+                        authDomain: "planshift-7ebb2.firebaseapp.com",
+                        projectId: "planshift-7ebb2",
+                        storageBucket: "planshift-7ebb2.firebasestorage.app",
+                        messagingSenderId: "902958199212",
+                        appId: "1:902958199212:web:49e8197780ecb1916d4a09",
+                        measurementId: "G-44R7BP8278"
 
                 };
 
@@ -468,7 +459,7 @@
             resultsOutput.innerHTML = ''; 
             resultsSummary.innerHTML = '';
             openPdfBtn.classList.add('hidden'); 
-            pageAddersContainer.classList.add('hidden'); 
+            pageModifiersContainer.classList.add('hidden'); 
             const matchedPages = new Set(); 
 
             for (let i = 1; i <= currentPdf.numPages; i++) {
@@ -567,8 +558,8 @@
             if (matchedPageNumbers.length > 0) {
                 resultsOutput.innerHTML = '';
                  for (const pageNum of matchedPageNumbers) {
-                      const page = await currentPdf.getPage(pageNum);
-                      await renderPage(page, resultsOutput);
+                       const page = await currentPdf.getPage(pageNum);
+                       await renderPage(page, resultsOutput);
                  }
             } else {
                  resultsOutput.innerHTML = '<p class="w-full px-2">No pages found or all pages have been removed.</p>';
@@ -587,52 +578,91 @@
                  const pageNumbersList = matchedPageNumbers.sort((a, b) => a - b);
                  resultsSummary.innerHTML = `<p class="mb-2 font-semibold">${matchedPageNumbers.length} selected page(s).</p><div class="mb-2 text-sm text-slate-600 break-words">Pages: <strong>${pageNumbersList.join(', ')}</strong></div>`;
                  openPdfBtn.classList.remove('hidden');
-                 pageAddersContainer.classList.remove('hidden'); 
+                 pageModifiersContainer.classList.remove('hidden'); 
             } else {
                  resultsSummary.innerHTML = '';
                  openPdfBtn.classList.add('hidden');
-                 pageAddersContainer.classList.add('hidden');
+                 pageModifiersContainer.classList.add('hidden');
                  resultsOutput.innerHTML = '<p class="w-full px-2">No pages found or all pages have been removed.</p>';
             }
         }
         
-        // --- Page Adding Functions ---
+        // --- Page Adding/Removing Functions ---
 
-        async function handleAddRange() {
+        /**
+         * Parses a string like "1-3, 5, 8" into an array of numbers [1, 2, 3, 5, 8].
+         * @param {string} str The string to parse.
+         * @returns {number[]} An array of page numbers.
+         */
+        function parsePageString(str) {
+            if (!str || typeof str !== 'string') return [];
+            
+            const pageNumbers = new Set();
+            const parts = str.split(',');
+
+            for (const part of parts) {
+                const trimmedPart = part.trim();
+                if (trimmedPart.includes('-')) {
+                    const [startStr, endStr] = trimmedPart.split('-');
+                    const start = parseInt(startStr, 10);
+                    const end = parseInt(endStr, 10);
+
+                    if (!isNaN(start) && !isNaN(end) && start <= end) {
+                        for (let i = start; i <= end; i++) {
+                            pageNumbers.add(i);
+                        }
+                    } else {
+                        console.warn(`Invalid page range found: "${trimmedPart}"`);
+                    }
+                } else {
+                    const pageNum = parseInt(trimmedPart, 10);
+                    if (!isNaN(pageNum)) {
+                        pageNumbers.add(pageNum);
+                    }
+                }
+            }
+            return Array.from(pageNumbers).sort((a, b) => a - b);
+        }
+
+        async function handleAddPages() {
             if (!currentPdf) return showNotification("Please load a PDF first.", "error");
-            const start = parseInt(rangeStartInput.value, 10);
-            const end = parseInt(rangeEndInput.value, 10);
+            const inputString = multiPageInput.value;
+            const pagesToAdd = parsePageString(inputString);
 
-            if (isNaN(start) || isNaN(end) || start > end) return showNotification("Invalid page range.", "error");
-            if (start < 1 || end > currentPdf.numPages) return showNotification(`Pages must be between 1 and ${currentPdf.numPages}.`, "error");
+            if (pagesToAdd.length === 0) return showNotification("Please enter valid pages to add.", "error");
 
-            setLoading(true, "Adding page range...");
+            setLoading(true, "Adding pages...");
             const pagesToInclude = new Set(matchedPageNumbers);
-            for (let i = start; i <= end; i++) pagesToInclude.add(i);
+            pagesToAdd.forEach(p => {
+                if (p > 0 && p <= currentPdf.numPages) {
+                    pagesToInclude.add(p);
+                } else {
+                    showNotification(`Page ${p} is out of bounds (1-${currentPdf.numPages}).`, "error");
+                }
+            });
+
             matchedPageNumbers = Array.from(pagesToInclude).sort((a, b) => a - b);
             
             await rerenderAllResults();
             updateResultsSummary();
-            rangeStartInput.value = '';
-            rangeEndInput.value = '';
+            multiPageInput.value = '';
             setLoading(false);
         }
-        
-        async function handleAddSinglePage() {
+
+        async function handleRemovePages() {
             if (!currentPdf) return showNotification("Please load a PDF first.", "error");
-            const pageNum = parseInt(addPageInput.value, 10);
+            const inputString = multiPageInput.value;
+            const pagesToRemove = parsePageString(inputString);
 
-            if (isNaN(pageNum)) return showNotification("Please enter a valid page number.", "error");
-            if (pageNum < 1 || pageNum > currentPdf.numPages) return showNotification(`Page must be between 1 and ${currentPdf.numPages}.`, "error");
+            if (pagesToRemove.length === 0) return showNotification("Please enter valid pages to remove.", "error");
 
-            setLoading(true, `Adding page ${pageNum}...`);
-            const pagesToInclude = new Set(matchedPageNumbers);
-            pagesToInclude.add(pageNum);
-            matchedPageNumbers = Array.from(pagesToInclude).sort((a, b) => a - b);
+            setLoading(true, "Removing pages...");
+            const pagesToRemoveSet = new Set(pagesToRemove);
+            matchedPageNumbers = matchedPageNumbers.filter(p => !pagesToRemoveSet.has(p));
             
             await rerenderAllResults();
             updateResultsSummary();
-            addPageInput.value = '';
+            multiPageInput.value = '';
             setLoading(false);
         }
 
@@ -988,6 +1018,29 @@
             }
         }
 
+        function updateSelectAllCheckboxState() {
+            const indexCheckboxes = parsedIndexOutput.querySelectorAll('input[type="checkbox"]');
+            if (indexCheckboxes.length === 0) {
+                selectAllIndexCheckbox.checked = false;
+                selectAllIndexCheckbox.indeterminate = false;
+                return;
+            }
+
+            const total = indexCheckboxes.length;
+            const checkedCount = Array.from(indexCheckboxes).filter(cb => cb.checked).length;
+
+            if (checkedCount === 0) {
+                selectAllIndexCheckbox.checked = false;
+                selectAllIndexCheckbox.indeterminate = false;
+            } else if (checkedCount === total) {
+                selectAllIndexCheckbox.checked = true;
+                selectAllIndexCheckbox.indeterminate = false;
+            } else {
+                selectAllIndexCheckbox.checked = false;
+                selectAllIndexCheckbox.indeterminate = true;
+            }
+        }
+
         function renderParsedIndex(indexData) {
             parsedIndexOutput.innerHTML = ''; 
 
@@ -1006,6 +1059,8 @@
                 checkbox.id = `index-item-${index}`;
                 checkbox.className = 'mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500';
                 checkbox.dataset.pageNum = item.pageNum;
+                // Add listener to individual checkbox to update the main "Select All" state
+                checkbox.addEventListener('change', updateSelectAllCheckboxState);
 
                 const label = document.createElement('label');
                 label.htmlFor = `index-item-${index}`;
@@ -1023,6 +1078,7 @@
             });
 
             parsedIndexContainer.classList.remove('hidden');
+            updateSelectAllCheckboxState(); // Update state after rendering all items
         }
 
         async function addSelectedIndexPages() {
@@ -1115,11 +1171,11 @@
             loadingMessage.textContent = 'Loading...';
             loadingMessage.className = 'p-4';
             popover.appendChild(loadingMessage);
-            
             document.body.appendChild(popover);
             
+            // 1. IMPROVED QUALITY: Render at a higher resolution
+            const magnifiedWidth = 800; // Increased from 500 for better quality
             const page = await currentPdf.getPage(pageNum);
-            const magnifiedWidth = 500; // You can adjust the base width of the magnified view
             const unscaledViewport = page.getViewport({ scale: 1.0 });
             const scale = magnifiedWidth / unscaledViewport.width;
             const viewport = page.getViewport({ scale: scale });
@@ -1133,6 +1189,54 @@
             
             popover.innerHTML = ''; // Clear the 'Loading...' text
             popover.appendChild(canvas);
+
+            // 2. IMPROVED POSITIONING: Dynamically place the popover
+            const popoverRect = popover.getBoundingClientRect();
+            const cursorX = event.clientX;
+            const cursorY = event.clientY;
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const margin = 20; // Margin from cursor and viewport edges
+
+            let top, left;
+
+            // Position vertically first to avoid obscuring content above/below
+            // If cursor is in the top 60% of the screen, show popover below it
+            if (cursorY < viewportHeight * 0.6) {
+                top = cursorY + margin;
+            } else { // Otherwise, show it above
+                top = cursorY - popoverRect.height - margin;
+            }
+
+            // Position horizontally
+            // If cursor is on the left half, show popover to the right
+            if (cursorX < viewportWidth / 2) {
+                left = cursorX + margin;
+            } else { // Otherwise, show it to the left
+                left = cursorX - popoverRect.width - margin;
+            }
+            
+            // Final checks to prevent going off-screen
+            if (top < margin) top = margin;
+            if (left < margin) left = margin;
+            if (top + popoverRect.height > viewportHeight - margin) {
+                top = viewportHeight - popoverRect.height - margin;
+            }
+            if (left + popoverRect.width > viewportWidth - margin) {
+                left = viewportWidth - popoverRect.width - margin;
+            }
+
+            popover.style.position = 'fixed';
+            popover.style.top = `${top}px`;
+            popover.style.left = `${left}px`;
+        }
+
+        function handleSelectAllIndex(e) {
+            const isChecked = e.target.checked;
+            const indexCheckboxes = parsedIndexOutput.querySelectorAll('input[type="checkbox"]');
+            indexCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
         }
         
         // --- Initial Application Setup ---
@@ -1183,11 +1287,12 @@
             saveGroupBtn.addEventListener('click', saveSearchGroup);
             loadGroupBtn.addEventListener('click', loadSearchGroup);
             deleteGroupBtn.addEventListener('click', deleteSearchGroup);
-            addRangeBtn.addEventListener('click', handleAddRange);
-            addPageBtn.addEventListener('click', handleAddSinglePage);
+            addPagesBtn.addEventListener('click', handleAddPages);
+            removePagesBtn.addEventListener('click', handleRemovePages);
             runSearchBtn.addEventListener('click', runSearch);
             openPdfBtn.addEventListener('click', openFilteredPdfInNewTab);
             addSelectedIndexBtn.addEventListener('click', addSelectedIndexPages);
+            selectAllIndexCheckbox.addEventListener('change', handleSelectAllIndex);
 
             // Index Parser Event Listeners
             parseIndexBtn.addEventListener('click', openIndexParser);
