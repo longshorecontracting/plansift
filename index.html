@@ -1174,7 +1174,7 @@
             document.body.appendChild(popover);
             
             // 1. IMPROVED QUALITY: Render at a higher resolution
-            const magnifiedWidth = 800; // Increased from 500 for better quality
+            const magnifiedWidth = 1000; // Increased from 500 for better quality USE THIS TO CHANGE ZOOM SCALE OF PAGE PREVIEW
             const page = await currentPdf.getPage(pageNum);
             const unscaledViewport = page.getViewport({ scale: 1.0 });
             const scale = magnifiedWidth / unscaledViewport.width;
