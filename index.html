@@ -334,6 +334,7 @@
 
         // --- Application State ---
         let currentPdf = null;
+        let currentFileBuffer = null; //new line to fix the empty filter pdf
         let matchedPageNumbers = [];
         let searchGroups = [];
         let db, auth, userId;
@@ -412,6 +413,7 @@
             fileReader.onload = async (e) => {
                 setLoading(true, "Loading PDF...");
                 try {
+                    currentFileBuffer = e.target.result; // Save the file buffer
                     const typedarray = new Uint8Array(e.target.result);
                     currentPdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
                     console.log("loadFile: PDF loaded successfully. currentPdf object:", currentPdf);
@@ -422,6 +424,7 @@
                     fileInfo.textContent = 'Error: Could not load PDF. Check console for details.';
                     showNotification('Error: Could not load PDF.', 'error');
                     currentPdf = null;
+                    currentFileBuffer = null; // Clear the buffer on error
                 } finally {
                     setLoading(false);
                 }
@@ -481,22 +484,24 @@
         }
         
         async function openFilteredPdfInNewTab() {
-            if (!fileInput.files[0] || matchedPageNumbers.length === 0) {
+            // This condition now checks your new variable
+            if (!currentFileBuffer || matchedPageNumbers.length === 0) {
                 showNotification("No file or pages to open.", "error");
                 return;
             }
             
             setLoading(true, "Creating new PDF...");
             try {
-                const originalPdfBytes = await fileInput.files[0].arrayBuffer();
+                // Use the stored buffer directly instead of reading the file again
+                const originalPdfBytes = currentFileBuffer;
                 const { PDFDocument } = PDFLib; 
                 const pdfDoc = await PDFDocument.load(originalPdfBytes);
                 const newPdfDoc = await PDFDocument.create();
-
+        
                 const pageIndices = matchedPageNumbers.map(n => n - 1).sort((a, b) => a - b);
                 const copiedPages = await newPdfDoc.copyPages(pdfDoc, pageIndices);
                 copiedPages.forEach(page => newPdfDoc.addPage(page));
-
+        
                 const newPdfBytes = await newPdfDoc.save();
                 const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
                 const blobUrl = URL.createObjectURL(blob);
