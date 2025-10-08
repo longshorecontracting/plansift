@@ -286,9 +286,6 @@
         </div>
     </div>
 
-    </div>
-</div>
-
     <!-- Payment Modal -->
     <div id="payment-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -1358,7 +1355,7 @@
                 top = cursorY - popoverRect.height - margin;
             }
         
-            if (cursorX < viewportWidth / .05) {
+            if (cursorX < viewportWidth / .5) {
                 left = cursorX + margin;
             } else {
                 left = cursorX - popoverRect.width - margin;
@@ -1465,6 +1462,8 @@
             loadGroupsFromStorage();
             loadUserEmail();
         }
+            document.addEventListener('DOMContentLoaded', init);
+        
 </script>
 </body>
 </html>
