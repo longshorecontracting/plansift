@@ -325,20 +325,30 @@
         const zoomInBtn = document.getElementById('zoom-in-btn');
         const zoomFitBtn = document.getElementById('zoom-fit-btn');
         const zoomDisplay = document.getElementById('zoom-display');
-
-
+        
+        // Payment DOM Elements
+        const paymentModal = document.getElementById('payment-modal');
+        const emailModal = document.getElementById('email-modal');
+        const closePaymentModalBtn = document.getElementById('close-payment-modal-btn');
+        const submitEmailBtn = document.getElementById('submit-email-btn');
+        const closeEmailModalBtn = document.getElementById('close-email-modal-btn');
+        const unlockFileBtn = document.getElementById('unlock-file-btn');
+        const emailInput = document.getElementById('email-input');
+        
         // --- Application State ---
         let currentPdf = null;
         let currentFileBuffer = null;
         let matchedPageNumbers = [];
         let searchGroups = [];
         const STORAGE_KEY = 'plansift-search-groups';
+        
+        // Payment State
         let searchCount = 0;
         let userEmail = null;
         let hasUnlockedCurrentFile = false;
-        const FREE_SEARCHES = 1;
-        const FREE_SEARCHES_WITH_EMAIL = 2;
-        const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00';
+        const FREE_SEARCHES = 1; // Set to 1 for easy testing
+        const FREE_SEARCHES_WITH_EMAIL = 3;
+        const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00'; // Replace with your actual link
         
         // Index Parser State
         let indexParserState = {
@@ -352,7 +362,77 @@
             currentViewport: null,
             currentScale: 'auto',
         };
-
+        
+        // --- Payment & Search Limit Functions ---
+        function checkSearchLimit() {
+            console.log("=== checkSearchLimit ===");
+            console.log("searchCount:", searchCount);
+            console.log("hasUnlockedCurrentFile:", hasUnlockedCurrentFile);
+            console.log("userEmail:", userEmail);
+            
+            if (hasUnlockedCurrentFile) {
+                console.log("File unlocked - unlimited searches");
+                return true;
+            }
+        
+            if (userEmail) {
+                console.log(`Has email: ${searchCount} < ${FREE_SEARCHES_WITH_EMAIL}`);
+                return searchCount < FREE_SEARCHES_WITH_EMAIL;
+            } else {
+                console.log(`No email: ${searchCount} < ${FREE_SEARCHES}`);
+                return searchCount < FREE_SEARCHES;
+            }
+        }
+        
+        function showEmailModal() {
+            console.log("Showing email modal");
+            emailModal.classList.remove('hidden');
+        }
+        
+        function closeEmailModal() {
+            console.log("Closing email modal");
+            emailModal.classList.add('hidden');
+        }
+        
+        function showPaymentModal() {
+            console.log("Showing payment modal");
+            unlockFileBtn.href = STRIPE_PAYMENT_LINK;
+            paymentModal.classList.remove('hidden');
+        }
+        
+        function closePaymentModal() {
+            console.log("Closing payment modal");
+            paymentModal.classList.add('hidden');
+        }
+        
+        function handleEmailSubmit() {
+            const email = emailInput.value.trim();
+            
+            if (!email || !email.includes('@')) {
+                showNotification('Please enter a valid email address.', 'error');
+                return;
+            }
+        
+            userEmail = email;
+            localStorage.setItem('plansift-user-email', email);
+            closeEmailModal();
+            showNotification(`Thanks! You now have ${FREE_SEARCHES_WITH_EMAIL - searchCount} more free searches.`, 'success');
+        }
+        
+        function resetSearchCountForNewFile() {
+            console.log("Resetting search count for new file");
+            searchCount = 0;
+            hasUnlockedCurrentFile = false;
+        }
+        
+        function loadUserEmail() {
+            const savedEmail = localStorage.getItem('plansift-user-email');
+            if (savedEmail) {
+                userEmail = savedEmail;
+                console.log("Loaded saved email:", userEmail);
+            }
+        }
+        
         // --- LocalStorage Functions ---
         function loadGroupsFromStorage() {
             try {
@@ -364,7 +444,7 @@
                 searchGroups = [];
             }
         }
-
+        
         function saveGroupsToStorage() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(searchGroups));
@@ -373,30 +453,27 @@
                 showNotification("Could not save groups.", "error");
             }
         }
-
+        
         function saveSearchGroup() {
             const name = newGroupNameInput.value.trim();
             const terms = searchTermsInput.value.trim();
             if (!name) return showNotification("Please enter a name for the group.", "error");
             if (!terms) return showNotification("Please enter search terms to save.", "error");
-
-            // Check if name already exists
+        
             const existingIndex = searchGroups.findIndex(g => g.name === name);
             if (existingIndex !== -1) {
-                // Update existing group
                 searchGroups[existingIndex].terms = terms;
                 showNotification(`Group "${name}" updated.`, "success");
             } else {
-                // Add new group
                 searchGroups.push({ id: Date.now().toString(), name, terms });
                 showNotification(`Group "${name}" saved.`, "success");
             }
-
+        
             saveGroupsToStorage();
             renderSearchGroupsDropdown();
             newGroupNameInput.value = '';
         }
-
+        
         function loadSearchGroup() {
             const selectedId = searchGroupsDropdown.value;
             const selectedGroup = searchGroups.find(g => g.id === selectedId);
@@ -404,13 +481,13 @@
                 searchTermsInput.value = selectedGroup.terms;
             }
         }
-
+        
         function deleteSearchGroup() {
             const selectedId = searchGroupsDropdown.value;
             if (!selectedId) return;
-
+        
             const selectedGroup = searchGroups.find(g => g.id === selectedId);
-
+        
             showConfirmation(`Delete the group "${selectedGroup.name}"?`, () => {
                 searchGroups = searchGroups.filter(g => g.id !== selectedId);
                 saveGroupsToStorage();
@@ -431,62 +508,13 @@
             }
             searchGroupsDropdown.value = selectedValue;
         }
-
-            <!-- Payment Modal -->
-    <div id="payment-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-2xl font-bold text-slate-800 mb-4">🔍 Search Limit Reached</h3>
-            <p class="text-slate-600 mb-6" id="payment-modal-message">
-                You've used your free searches. Unlock unlimited searches for this file!
-            </p>
-            
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="font-semibold text-slate-700">Unlock This File</span>
-                    <span class="text-2xl font-bold text-blue-600">$1</span>
-                </div>
-                <ul class="text-sm text-slate-600 space-y-1">
-                    <li>✓ Unlimited searches</li>
-                    <li>✓ 24-hour access</li>
-                    <li>✓ Instant activation</li>
-                </ul>
-            </div>
-    
-            <a href="#" id="unlock-file-btn" class="block w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 text-center mb-3">
-                Unlock Now - $1
-            </a>
-            
-            <button id="close-payment-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
-                Maybe Later
-            </button>
-        </div>
-    </div>
-    
-    <!-- Email Capture Modal -->
-    <div id="email-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-2xl font-bold text-slate-800 mb-4">Get 5 More Free Searches</h3>
-            <p class="text-slate-600 mb-6">Enter your email to continue with 5 additional free searches.</p>
-            
-            <input type="email" id="email-input" placeholder="your@email.com" class="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            
-            <button id="submit-email-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300 mb-3">
-                Continue Free
-            </button>
-            
-            <button id="close-email-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
-                Cancel
-            </button>
-        </div>
-    </div>
         
         // --- Core Application Logic ---
-
         async function loadFile(file) {
             runSearchBtn.disabled = true;
             parseIndexBtn.classList.add('hidden');
-        
-            // RESET SEARCH COUNT FOR NEW FILE
+            
+            // Reset search count for new file
             resetSearchCountForNewFile();
         
             if (!file || file.type !== 'application/pdf') {
@@ -495,8 +523,6 @@
                 currentPdf = null;
                 return;
             }
-            // ... rest of function stays the same
-        }
             fileInfo.textContent = `File: ${file.name}`;
             const fileReader = new FileReader();
             fileReader.onload = async (e) => {
@@ -505,11 +531,11 @@
                     currentFileBuffer = e.target.result;
                     const typedarray = new Uint8Array(e.target.result);
                     currentPdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
-                    console.log("loadFile: PDF loaded successfully. currentPdf object:", currentPdf);
+                    console.log("PDF loaded successfully");
                     runSearchBtn.disabled = false;
                     parseIndexBtn.classList.remove('hidden');
                 } catch (error) {
-                    console.error("loadFile: Error loading PDF:", error);
+                    console.error("Error loading PDF:", error);
                     fileInfo.textContent = 'Error: Could not load PDF. Check console for details.';
                     showNotification('Error: Could not load PDF.', 'error');
                     currentPdf = null;
@@ -520,82 +546,88 @@
             };
             fileReader.readAsArrayBuffer(file);
         }
-
+        
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (file) {
                 loadFile(file);
             }
         }
-
-            async function runSearch() {
-        console.log("runSearch: Fired. Checking currentPdf:", currentPdf);
-        if (!currentPdf) {
-            showNotification('Please select a PDF file first.', 'error');
-            return;
-        }
-    
-        // CHECK SEARCH LIMIT
-        if (!checkSearchLimit()) {
-            if (!userEmail) {
-                // Show email modal first
-                showEmailModal();
-            } else {
-                // Show payment modal
-                showPaymentModal();
-            }
-            return;
-        }
-    
-        const termsText = searchTermsInput.value.trim();
-        if (!termsText) {
-            showNotification('Please enter some search terms.', 'error');
-            return;
-        }
         
-        // INCREMENT SEARCH COUNT
-        searchCount++;
-        console.log(`Search count: ${searchCount}`);
+        async function runSearch() {
+            console.log("=== runSearch called ===");
+            console.log("searchCount BEFORE check:", searchCount);
+            
+            if (!currentPdf) {
+                showNotification('Please select a PDF file first.', 'error');
+                return;
+            }
         
-        const searchTerms = termsText.split(',').map(term => term.trim().toLowerCase().replace(/\s+/g, '')).filter(term => term.length > 0);
+            // CHECK SEARCH LIMIT
+            const canSearch = checkSearchLimit();
+            console.log("Can search?", canSearch);
+            
+            if (!canSearch) {
+                console.log("LIMIT REACHED!");
+                if (!userEmail) {
+                    console.log("No email - showing email modal");
+                    showEmailModal();
+                } else {
+                    console.log("Has email - showing payment modal");
+                    showPaymentModal();
+                }
+                return;
+            }
         
-        if (searchTerms.length === 0) {
-            showNotification('Please enter valid search terms.', 'error');
-            return;
-        }
-    
-        setLoading(true, "Searching PDF...");
-        resultsOutput.innerHTML = ''; 
-        resultsSummary.innerHTML = '';
-        openPdfBtn.classList.add('hidden'); 
-        pageModifiersContainer.classList.add('hidden'); 
-        const matchedPages = new Set(); 
-    
-        for (let i = 1; i <= currentPdf.numPages; i++) {
-            setLoading(true, `Searching page ${i} of ${currentPdf.numPages}...`);
-            const page = await currentPdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => item.str).join('').toLowerCase().replace(/\s+/g, '');
-    
-            const isMatch = searchTerms.some(term => pageText.includes(term));
-            if (isMatch) {
-                matchedPages.add(page.pageNumber); 
+            const termsText = searchTermsInput.value.trim();
+            if (!termsText) {
+                showNotification('Please enter some search terms.', 'error');
+                return;
+            }
+            
+            // INCREMENT SEARCH COUNT
+            searchCount++;
+            console.log("Search count AFTER increment:", searchCount);
+            
+            const searchTerms = termsText.split(',').map(term => term.trim().toLowerCase().replace(/\s+/g, '')).filter(term => term.length > 0);
+            
+            if (searchTerms.length === 0) {
+                showNotification('Please enter valid search terms.', 'error');
+                return;
+            }
+        
+            setLoading(true, "Searching PDF...");
+            resultsOutput.innerHTML = ''; 
+            resultsSummary.innerHTML = '';
+            openPdfBtn.classList.add('hidden'); 
+            pageModifiersContainer.classList.add('hidden'); 
+            const matchedPages = new Set(); 
+        
+            for (let i = 1; i <= currentPdf.numPages; i++) {
+                setLoading(true, `Searching page ${i} of ${currentPdf.numPages}...`);
+                const page = await currentPdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join('').toLowerCase().replace(/\s+/g, '');
+        
+                const isMatch = searchTerms.some(term => pageText.includes(term));
+                if (isMatch) {
+                    matchedPages.add(page.pageNumber); 
+                }
+            }
+        
+            matchedPageNumbers = Array.from(matchedPages).sort((a,b) => a-b);
+            await rerenderAllResults();
+            updateResultsSummary();
+            setLoading(false);
+        
+            // Show remaining searches notification
+            if (!hasUnlockedCurrentFile) {
+                const remaining = (userEmail ? FREE_SEARCHES_WITH_EMAIL : FREE_SEARCHES) - searchCount;
+                if (remaining > 0) {
+                    showNotification(`${remaining} free search${remaining !== 1 ? 'es' : ''} remaining`, 'success');
+                }
             }
         }
-    
-        matchedPageNumbers = Array.from(matchedPages).sort((a,b) => a-b);
-        await rerenderAllResults();
-        updateResultsSummary();
-        setLoading(false);
-    
-        // SHOW REMAINING SEARCHES
-        if (!hasUnlockedCurrentFile) {
-            const remaining = (userEmail ? FREE_SEARCHES_WITH_EMAIL : FREE_SEARCHES) - searchCount;
-            if (remaining > 0) {
-                showNotification(`${remaining} free search${remaining !== 1 ? 'es' : ''} remaining`, 'success');
-            }
-        }
-    }
         
         async function openFilteredPdfInNewTab() {
             if (!currentFileBuffer || matchedPageNumbers.length === 0) {
@@ -627,15 +659,13 @@
         }
         
         // --- UI Rendering Functions ---
-
         async function renderPage(page, container) {
             const pageNum = page.pageNumber;
             const wrapper = document.createElement('div');
             wrapper.className = 'page-wrapper flex-shrink-0 w-64';
             wrapper.id = `page-wrapper-${pageNum}`;
-
             wrapper.dataset.pageNumber = pageNum;
-
+        
             const removeBtn = document.createElement('button');
             removeBtn.innerHTML = '&times;';
             removeBtn.className = 'remove-page-btn bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold hover:bg-red-700 transition-colors z-10';
@@ -646,17 +676,17 @@
             const containerWidth = 256;
             const scale = (containerWidth / unscaledViewport.width); 
             const viewport = page.getViewport({ scale: scale });
-
+        
             const canvas = document.createElement('canvas');
             canvas.className = 'page-canvas mx-auto'; 
             const context = canvas.getContext('2d');
             canvas.height = viewport.height;
             canvas.width = viewport.width;
-
+        
             const pageTitle = document.createElement('p');
             pageTitle.className = 'text-sm font-bold text-center text-slate-600 mb-1';
             pageTitle.textContent = `Page ${pageNum}`;
-
+        
             wrapper.addEventListener('mouseenter', handleMouseEnter);
             wrapper.addEventListener('mouseleave', handleMouseLeave);
             
@@ -664,10 +694,10 @@
             wrapper.appendChild(pageTitle); 
             wrapper.appendChild(canvas);
             container.appendChild(wrapper);
-
+        
             await page.render({ canvasContext: context, viewport: viewport }).promise;
         }
-
+        
         async function rerenderAllResults() {
             handleMouseLeave();
             resultsOutput.innerHTML = '<p class="w-full px-2">Loading page previews...</p>'; 
@@ -681,7 +711,7 @@
                  resultsOutput.innerHTML = '<p class="w-full px-2">No pages found or all pages have been removed.</p>';
             }
         }
-
+        
         function removePage(pageNum) {
             handleMouseLeave();
             const wrapperToRemove = document.getElementById(`page-wrapper-${pageNum}`);
@@ -689,7 +719,7 @@
             matchedPageNumbers = matchedPageNumbers.filter(num => num !== pageNum);
             updateResultsSummary();
         }
-
+        
         function updateResultsSummary() {
             if (matchedPageNumbers.length > 0) {
                  const pageNumbersList = matchedPageNumbers.sort((a, b) => a - b);
@@ -706,20 +736,19 @@
         }
         
         // --- Page Adding/Removing Functions ---
-
         function parsePageString(str) {
             if (!str || typeof str !== 'string') return [];
             
             const pageNumbers = new Set();
             const parts = str.split(',');
-
+        
             for (const part of parts) {
                 const trimmedPart = part.trim();
                 if (trimmedPart.includes('-')) {
                     const [startStr, endStr] = trimmedPart.split('-');
                     const start = parseInt(startStr, 10);
                     const end = parseInt(endStr, 10);
-
+        
                     if (!isNaN(start) && !isNaN(end) && start <= end) {
                         for (let i = start; i <= end; i++) {
                             pageNumbers.add(i);
@@ -736,14 +765,14 @@
             }
             return Array.from(pageNumbers).sort((a, b) => a - b);
         }
-
+        
         async function handleAddPages() {
             if (!currentPdf) return showNotification("Please load a PDF first.", "error");
             const inputString = multiPageInput.value;
             const pagesToAdd = parsePageString(inputString);
-
+        
             if (pagesToAdd.length === 0) return showNotification("Please enter valid pages to add.", "error");
-
+        
             setLoading(true, "Adding pages...");
             const pagesToInclude = new Set(matchedPageNumbers);
             pagesToAdd.forEach(p => {
@@ -753,7 +782,7 @@
                     showNotification(`Page ${p} is out of bounds (1-${currentPdf.numPages}).`, "error");
                 }
             });
-
+        
             matchedPageNumbers = Array.from(pagesToInclude).sort((a, b) => a - b);
             
             await rerenderAllResults();
@@ -761,14 +790,14 @@
             multiPageInput.value = '';
             setLoading(false);
         }
-
+        
         async function handleRemovePages() {
             if (!currentPdf) return showNotification("Please load a PDF first.", "error");
             const inputString = multiPageInput.value;
             const pagesToRemove = parsePageString(inputString);
-
+        
             if (pagesToRemove.length === 0) return showNotification("Please enter valid pages to remove.", "error");
-
+        
             setLoading(true, "Removing pages...");
             const pagesToRemoveSet = new Set(pagesToRemove);
             matchedPageNumbers = matchedPageNumbers.filter(p => !pagesToRemoveSet.has(p));
@@ -778,9 +807,8 @@
             multiPageInput.value = '';
             setLoading(false);
         }
-
+        
         // --- Index Parser Functions ---
-
         function openIndexParser() {
             if (!currentPdf) return;
             indexParserState.pdf = currentPdf;
@@ -792,7 +820,7 @@
             indexParserModal.classList.remove('hidden');
             renderIndexPage(1);
         }
-
+        
         function closeIndexParser() {
             indexParserModal.classList.add('hidden');
             indexParserCanvas.width = 0;
@@ -800,7 +828,7 @@
             selectionBox.style.display = 'none';
             parseSelectionBtn.disabled = true;
         }
-
+        
         async function renderIndexPage(pageNum) {
             if (!indexParserState.pdf) return;
             setLoading(true, `Loading page ${pageNum}...`);
@@ -810,22 +838,22 @@
                 
                 let scale;
                 const unscaledViewport = page.getViewport({ scale: 1.0 });
-
+        
                 if (indexParserState.currentScale === 'auto') {
                     const wrapperWidth = indexCanvasWrapper.clientWidth - 40;
                     scale = wrapperWidth / unscaledViewport.width;
                 } else {
                     scale = indexParserState.currentScale;
                 }
-
+        
                 zoomDisplay.textContent = `${Math.round(scale * 100)}%`;
                 const viewport = page.getViewport({ scale: scale });
                 indexParserState.currentViewport = viewport;
-
+        
                 const context = indexParserCanvas.getContext('2d');
                 indexParserCanvas.height = viewport.height;
                 indexParserCanvas.width = viewport.width;
-
+        
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
             } catch (error) {
                 console.error(`Failed to render page ${pageNum}:`, error);
@@ -843,7 +871,7 @@
                 renderIndexPage(newPageNum);
             }
         }
-
+        
         function goToIndexPage() {
             let newPageNum = parseInt(indexPageNumInput.value, 10);
             if (!isNaN(newPageNum) && newPageNum > 0 && newPageNum <= indexParserState.totalPages) {
@@ -853,7 +881,7 @@
                 indexPageNumInput.value = indexParserState.currentPageNum;
             }
         }
-
+        
         function handleSelectionStart(e) {
             indexParserState.isSelecting = true;
             indexParserState.selectionStart.x = e.offsetX;
@@ -865,23 +893,23 @@
             selectionBox.style.display = 'block';
             parseSelectionBtn.disabled = true;
         }
-
+        
         function handleSelectionMove(e) {
             if (!indexParserState.isSelecting) return;
             const currentX = e.offsetX;
             const currentY = e.offsetY;
-
+        
             const x = Math.min(currentX, indexParserState.selectionStart.x);
             const y = Math.min(currentY, indexParserState.selectionStart.y);
             const width = Math.abs(currentX - indexParserState.selectionStart.x);
             const height = Math.abs(currentY - indexParserState.selectionStart.y);
-
+        
             selectionBox.style.left = `${x}px`;
             selectionBox.style.top = `${y}px`;
             selectionBox.style.width = `${width}px`;
             selectionBox.style.height = `${height}px`;
         }
-
+        
         function handleSelectionEnd(e) {
             indexParserState.isSelecting = false;
             const finalWidth = parseFloat(selectionBox.style.width);
@@ -892,7 +920,7 @@
                 selectionBox.style.display = 'none';
             }
         }
-
+        
         function getCurrentScale() {
             if (indexParserState.currentScale !== 'auto') {
                 return indexParserState.currentScale;
@@ -903,19 +931,19 @@
             const unscaledViewport = page.getViewport({ scale: 1.0 });
             return wrapperWidth / unscaledViewport.width;
         }
-
+        
         function handleZoomIn() {
             const currentScale = getCurrentScale();
             indexParserState.currentScale = currentScale + 0.25;
             renderIndexPage(indexParserState.currentPageNum);
         }
-
+        
         function handleZoomOut() {
             const currentScale = getCurrentScale();
             indexParserState.currentScale = Math.max(0.1, currentScale - 0.25);
             renderIndexPage(indexParserState.currentPageNum);
         }
-
+        
         function handleZoomFit() {
             indexParserState.currentScale = 'auto';
             renderIndexPage(indexParserState.currentPageNum);
@@ -925,7 +953,7 @@
             if (!currentPdf || terms.length === 0) {
                 return [];
             }
-
+        
             const foundIndexData = [];
             const termsToFind = new Map(
                 terms.map(term => {
@@ -933,22 +961,22 @@
                     return [term, cleanedWords];
                 })
             );
-
+        
             for (let i = 1; i <= currentPdf.numPages; i++) {
                 if (i === pageToExclude) {
                     continue;
                 }
-
+        
                 if (termsToFind.size === 0) {
                     break;
                 }
-
+        
                 setLoading(true, `Scanning for index terms on page ${i} of ${currentPdf.numPages}...`);
-
+        
                 const page = await currentPdf.getPage(i);
                 const textContent = await page.getTextContent();
                 const pageText = textContent.items.map(item => item.str).join(' ').toLowerCase();
-
+        
                 for (const [originalTerm, searchWords] of termsToFind.entries()) {
                     if (searchWords.length === 0) {
                         termsToFind.delete(originalTerm);
@@ -956,25 +984,24 @@
                     }
                     
                     const allWordsFound = searchWords.every(word => pageText.includes(word));
-
+        
                     if (allWordsFound) {
                         foundIndexData.push({ description: originalTerm, pageNum: i });
                         termsToFind.delete(originalTerm);
                     }
                 }
             }
-
+        
             if (termsToFind.size > 0) {
                 showNotification(`${termsToFind.size} index terms could not be found in the document.`, 'error');
                 console.log("Unfound terms:", [...termsToFind.keys()]);
             }
-
+        
             foundIndexData.sort((a, b) => terms.indexOf(a.description) - terms.indexOf(b.description));
-
+        
             return foundIndexData;
         }
-
-
+        
         async function parseSelectedText() {
             setLoading(true, "Parsing selection...");
             try {
@@ -992,11 +1019,11 @@
                     width: parseFloat(selectionBox.style.width),
                     height: parseFloat(selectionBox.style.height)
                 };
-
+        
                 const startPoint = viewport.convertToPdfPoint(rect.x, rect.y + rect.height);
                 const endPoint = viewport.convertToPdfPoint(rect.x + rect.width, rect.y);
                 const pdfRect = { x1: startPoint[0], y1: startPoint[1], x2: endPoint[0], y2: endPoint[1] };
-
+        
                 const textContent = await page.getTextContent();
                 const itemsInBox = textContent.items.filter(item => {
                     const tx = item.transform;
@@ -1004,7 +1031,7 @@
                     const y = tx[5];
                     return x >= pdfRect.x1 && x <= pdfRect.x2 && y >= pdfRect.y1 && y <= pdfRect.y2;
                 });
-
+        
                 itemsInBox.sort((a, b) => {
                     const y1 = a.transform[5];
                     const y2 = b.transform[5];
@@ -1013,7 +1040,7 @@
                     }
                     return a.transform[4] - b.transform[4];
                 });
-
+        
                 let lines = [];
                 if (itemsInBox.length > 0) {
                     let currentLine = [itemsInBox[0]];
@@ -1029,7 +1056,7 @@
                 }
                 
                 const searchTermsFromIndex = lines.map(line => line.trim().replace(/\s+/g, ' ')).filter(line => line.length > 2);
-
+        
                 if (searchTermsFromIndex.length === 0) {
                     showNotification("No text found in the selection to use as search terms.", "error");
                     closeIndexParser();
@@ -1037,16 +1064,16 @@
                 }
                 
                 closeIndexParser();
-
+        
                 const parsedIndexData = await findIndexPages(searchTermsFromIndex, pageToExclude);
-
+        
                 if (parsedIndexData.length > 0) {
                     renderParsedIndex(parsedIndexData);
                     showNotification(`${parsedIndexData.length} index items found in the document.`, 'success');
                 } else {
                     showNotification("Could not find any of the selected index items in the document.", "error");
                 }
-
+        
             } catch(error) {
                 console.error("Error parsing selected text:", error);
                 showNotification("Could not parse text from selection.", "error");
@@ -1054,7 +1081,7 @@
                 setLoading(false);
             }
         }
-
+        
         function updateSelectAllCheckboxState() {
             const indexCheckboxes = parsedIndexOutput.querySelectorAll('input[type="checkbox"]');
             if (indexCheckboxes.length === 0) {
@@ -1062,10 +1089,10 @@
                 selectAllIndexCheckbox.indeterminate = false;
                 return;
             }
-
+        
             const total = indexCheckboxes.length;
             const checkedCount = Array.from(indexCheckboxes).filter(cb => cb.checked).length;
-
+        
             if (checkedCount === 0) {
                 selectAllIndexCheckbox.checked = false;
                 selectAllIndexCheckbox.indeterminate = false;
@@ -1077,54 +1104,54 @@
                 selectAllIndexCheckbox.indeterminate = true;
             }
         }
-
+        
         function renderParsedIndex(indexData) {
             parsedIndexOutput.innerHTML = ''; 
-
+        
             if (indexData.length === 0) {
                 parsedIndexOutput.innerHTML = '<p class="text-slate-500">No index data to display.</p>';
                 parsedIndexContainer.classList.add('hidden');
                 return;
             }
-
+        
             indexData.forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = 'p-2 rounded-md hover:bg-slate-100 flex items-center';
-
+        
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.id = `index-item-${index}`;
                 checkbox.className = 'mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500';
                 checkbox.dataset.pageNum = item.pageNum;
                 checkbox.addEventListener('change', updateSelectAllCheckboxState);
-
+        
                 const label = document.createElement('label');
                 label.htmlFor = `index-item-${index}`;
                 label.className = 'flex-grow cursor-pointer';
                 label.textContent = item.description;
-
+        
                 const pageNumSpan = document.createElement('span');
                 pageNumSpan.className = 'ml-4 font-mono text-sm text-slate-500 bg-slate-200 px-2 py-1 rounded';
                 pageNumSpan.textContent = `Pg. ${item.pageNum}`;
-
+        
                 div.appendChild(checkbox);
                 div.appendChild(label);
                 div.appendChild(pageNumSpan);
                 parsedIndexOutput.appendChild(div);
             });
-
+        
             parsedIndexContainer.classList.remove('hidden');
             updateSelectAllCheckboxState();
         }
-
+        
         async function addSelectedIndexPages() {
             const checkedBoxes = document.querySelectorAll('#parsed-index-output input[type="checkbox"]:checked');
-
+        
             if (checkedBoxes.length === 0) {
                 showNotification("No index items selected.", "error");
                 return;
             }
-
+        
             setLoading(true, "Adding selected pages...");
             const pagesToAdd = new Set(matchedPageNumbers);
             checkedBoxes.forEach(box => {
@@ -1133,44 +1160,43 @@
                     pagesToAdd.add(pageNum);
                 }
             });
-
+        
             matchedPageNumbers = Array.from(pagesToAdd).sort((a, b) => a - b);
-
+        
             await rerenderAllResults();
             updateResultsSummary();
             setLoading(false);
             showNotification(`${checkedBoxes.length} page(s) added to results.`, "success");
         }
-
-
+        
         // --- Utility Functions (UI Helpers) ---
         function setLoading(isLoading, text = "Loading...") {
             loadingText.textContent = text;
             loadingModal.classList.toggle('hidden', !isLoading);
         }
-
+        
         function showNotification(message, type = 'success') {
             const notif = document.createElement('div');
             notif.className = `notification ${type}`;
             notif.textContent = message;
             notificationContainer.appendChild(notif);
-
+        
             setTimeout(() => notif.classList.add('show'), 10);
             setTimeout(() => {
                 notif.classList.remove('show');
                 notif.addEventListener('transitionend', () => notif.remove());
             }, 3000);
         }
-
+        
         function showConfirmation(message, onConfirm) {
             confirmationTitle.textContent = message;
             confirmationModal.classList.remove('hidden');
-
+        
             const confirmHandler = () => {
                 onConfirm();
                 cleanup();
             };
-
+        
             const cancelHandler = () => {
                 cleanup();
             };
@@ -1180,12 +1206,11 @@
                 confirmBtnYes.removeEventListener('click', confirmHandler);
                 confirmBtnNo.removeEventListener('click', cancelHandler);
             }
-
+        
             confirmBtnYes.addEventListener('click', confirmHandler, { once: true });
             confirmBtnNo.addEventListener('click', cancelHandler, { once: true });
         }
-
-
+        
         // --- Magnifier Functions ---
         function handleMouseLeave(event) {
             const popover = document.getElementById('magnifier-popover');
@@ -1224,22 +1249,22 @@
             
             popover.innerHTML = '';
             popover.appendChild(canvas);
-
+        
             const popoverRect = popover.getBoundingClientRect();
             const cursorX = event.clientX;
             const cursorY = event.clientY;
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
             const margin = 10;
-
+        
             let top, left;
-
+        
             if (cursorY < viewportHeight * 0.6) {
                 top = cursorY + margin;
             } else {
                 top = cursorY - popoverRect.height - margin;
             }
-
+        
             if (cursorX < viewportWidth / .05) {
                 left = cursorX + margin;
             } else {
@@ -1254,12 +1279,12 @@
             if (left + popoverRect.width > viewportWidth - margin) {
                 left = viewportWidth - popoverRect.width - margin;
             }
-
+        
             popover.style.position = 'fixed';
             popover.style.top = `${top}px`;
             popover.style.left = `${left}px`;
         }
-
+        
         function handleSelectAllIndex(e) {
             const isChecked = e.target.checked;
             const indexCheckboxes = parsedIndexOutput.querySelectorAll('input[type="checkbox"]');
@@ -1267,100 +1292,32 @@
                 checkbox.checked = isChecked;
             });
         }
-
-        // --- Payment & Search Limit Functions ---
-        
-        function checkSearchLimit() {
-            // If file is unlocked, allow unlimited searches
-            if (hasUnlockedCurrentFile) {
-                return true;
-            }
-        
-            // Check if within free limit
-            if (userEmail) {
-                // Has email: 10 free searches total
-                if (searchCount < FREE_SEARCHES_WITH_EMAIL) {
-                    return true;
-                }
-            } else {
-                // No email: 5 free searches
-                if (searchCount < FREE_SEARCHES) {
-                    return true;
-                }
-            }
-        
-            return false;
-        }
-        
-        function showEmailModal() {
-            document.getElementById('email-modal').classList.remove('hidden');
-        }
-        
-        function closeEmailModal() {
-            document.getElementById('email-modal').classList.add('hidden');
-        }
-        
-        function showPaymentModal() {
-            const unlockBtn = document.getElementById('unlock-file-btn');
-            unlockBtn.href = STRIPE_PAYMENT_LINK;
-            document.getElementById('payment-modal').classList.remove('hidden');
-        }
-        
-        function closePaymentModal() {
-            document.getElementById('payment-modal').classList.add('hidden');
-        }
-        
-        function handleEmailSubmit() {
-            const emailInput = document.getElementById('email-input');
-            const email = emailInput.value.trim();
-            
-            if (!email || !email.includes('@')) {
-                showNotification('Please enter a valid email address.', 'error');
-                return;
-            }
-        
-            userEmail = email;
-            localStorage.setItem('plansift-user-email', email);
-            closeEmailModal();
-            showNotification(`Thanks! You now have ${FREE_SEARCHES_WITH_EMAIL - searchCount} more free searches.`, 'success');
-        }
-        
-        function resetSearchCountForNewFile() {
-            searchCount = 0;
-            hasUnlockedCurrentFile = false;
-        }
-        
-        function loadUserEmail() {
-            const savedEmail = localStorage.getItem('plansift-user-email');
-            if (savedEmail) {
-                userEmail = savedEmail;
-            }
-        }
         
         // --- Initial Application Setup ---
         function init() {
+            console.log("=== PlanSift Initializing ===");
             runSearchBtn.disabled = true; 
             fileInput.addEventListener('change', handleFileSelect);
-
+        
             searchTermsInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     runSearchBtn.click();
                 }
             });
-
+        
             dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 dropZone.classList.add('dragover');
             });
-
+        
             dropZone.addEventListener('dragleave', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 dropZone.classList.remove('dragover');
             });
-
+        
             dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1375,7 +1332,7 @@
             dropZone.addEventListener('click', () => {
                 fileInput.click();
             });
-
+        
             saveGroupBtn.addEventListener('click', saveSearchGroup);
             loadGroupBtn.addEventListener('click', loadSearchGroup);
             deleteGroupBtn.addEventListener('click', deleteSearchGroup);
@@ -1385,7 +1342,7 @@
             openPdfBtn.addEventListener('click', openFilteredPdfInNewTab);
             addSelectedIndexBtn.addEventListener('click', addSelectedIndexPages);
             selectAllIndexCheckbox.addEventListener('change', handleSelectAllIndex);
-
+        
             parseIndexBtn.addEventListener('click', openIndexParser);
             cancelIndexParserBtn.addEventListener('click', closeIndexParser);
             indexPrevPageBtn.addEventListener('click', () => changeIndexPage(-1));
@@ -1399,15 +1356,74 @@
             indexParserCanvas.parentElement.addEventListener('mousedown', handleSelectionStart);
             indexParserCanvas.parentElement.addEventListener('mousemove', handleSelectionMove);
             indexParserCanvas.parentElement.addEventListener('mouseup', handleSelectionEnd);
-
-            document.getElementById('close-payment-modal-btn').addEventListener('click', closePaymentModal);
-            document.getElementById('submit-email-btn').addEventListener('click', handleEmailSubmit);
-            document.getElementById('close-email-modal-btn').addEventListener('click', closeEmailModal);
+        
+            // Payment modal event listeners
+            closePaymentModalBtn.addEventListener('click', closePaymentModal);
+            submitEmailBtn.addEventListener('click', handleEmailSubmit);
+            closeEmailModalBtn.addEventListener('click', closeEmailModal);
             
+            emailInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleEmailSubmit();
+                }
+            });
+        
             loadGroupsFromStorage();
-            loadUserEmail(); // Load saved email if exists
+            loadUserEmail();
+            
+            console.log("Init complete. FREE_SEARCHES:", FREE_SEARCHES);
         }
+        
         init(); 
     </script>
+
+    <!-- Payment Modal -->
+<div id="payment-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-2xl font-bold text-slate-800 mb-4">🔍 Search Limit Reached</h3>
+        <p class="text-slate-600 mb-6">
+            You've used your free searches. Unlock unlimited searches for this file!
+        </p>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-semibold text-slate-700">Unlock This File</span>
+                <span class="text-2xl font-bold text-blue-600">$1</span>
+            </div>
+            <ul class="text-sm text-slate-600 space-y-1">
+                <li>✓ Unlimited searches</li>
+                <li>✓ 24-hour access</li>
+                <li>✓ Instant activation</li>
+            </ul>
+        </div>
+
+        <a href="#" id="unlock-file-btn" class="block w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 text-center mb-3">
+            Unlock Now - $1
+        </a>
+        
+        <button id="close-payment-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
+            Maybe Later
+        </button>
+    </div>
+</div>
+
+<!-- Email Capture Modal -->
+<div id="email-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-2xl font-bold text-slate-800 mb-4">Get 5 More Free Searches</h3>
+        <p class="text-slate-600 mb-6">Enter your email to continue with 5 additional free searches.</p>
+        
+        <input type="email" id="email-input" placeholder="your@email.com" class="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        
+        <button id="submit-email-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300 mb-3">
+            Continue Free
+        </button>
+        
+        <button id="close-email-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
+            Cancel
+        </button>
+    </div>
+</div>
 </body>
 </html>
