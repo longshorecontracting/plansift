@@ -396,12 +396,88 @@
         const STORAGE_KEY = 'plansift-search-groups';
         
         // Payment State
-        let searchCount = 0;
+        let filesProcessed = 0;
         let userEmail = null;
         let hasUnlockedCurrentFile = false;
-        const FREE_SEARCHES = 1; // Set to 1 for easy testing
-        const FREE_SEARCHES_WITH_EMAIL = 3;
-        const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00'; // Replace with your actual link
+        const FREE_FILES = 1; // Free files without email
+        const FREE_FILES_WITH_EMAIL = 3; // Free files with email
+        const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00';
+        
+        // --- Payment & File Limit Functions ---
+        function checkFileLimit() {
+            console.log("=== checkFileLimit ===");
+            console.log("filesProcessed:", filesProcessed);
+            console.log("userEmail:", userEmail);
+            
+            if (userEmail) {
+                console.log(`Has email: ${filesProcessed} < ${FREE_FILES_WITH_EMAIL}`);
+                return filesProcessed < FREE_FILES_WITH_EMAIL;
+            } else {
+                console.log(`No email: ${filesProcessed} < ${FREE_FILES}`);
+                return filesProcessed < FREE_FILES;
+            }
+        }
+        
+        function showEmailModal() {
+            console.log("Showing email modal");
+            emailModal.classList.remove('hidden');
+        }
+        
+        function closeEmailModal() {
+            console.log("Closing email modal");
+            emailModal.classList.add('hidden');
+        }
+        
+        function showPaymentModal() {
+            console.log("Showing payment modal");
+            unlockFileBtn.href = STRIPE_PAYMENT_LINK;
+            paymentModal.classList.remove('hidden');
+        }
+        
+        function closePaymentModal() {
+            console.log("Closing payment modal");
+            paymentModal.classList.add('hidden');
+        }
+        
+        function handleEmailSubmit() {
+            const email = emailInput.value.trim();
+            
+            if (!email || !email.includes('@')) {
+                showNotification('Please enter a valid email address.', 'error');
+                return;
+            }
+        
+            userEmail = email;
+            localStorage.setItem('plansift-user-email', email);
+            closeEmailModal();
+            
+            const remainingFiles = FREE_FILES_WITH_EMAIL - filesProcessed;
+            showNotification(`Thanks! You can now process ${remainingFiles} more file${remainingFiles !== 1 ? 's' : ''} for free.`, 'success');
+            
+            // Allow them to load the file now
+            continueFileLoad();
+        }
+        
+        function loadUserEmail() {
+            const savedEmail = localStorage.getItem('plansift-user-email');
+            if (savedEmail) {
+                userEmail = savedEmail;
+                console.log("Loaded saved email:", userEmail);
+            }
+            
+            // Also load files processed count
+            const savedCount = localStorage.getItem('plansift-files-processed');
+            if (savedCount) {
+                filesProcessed = parseInt(savedCount, 10);
+                console.log("Loaded files processed:", filesProcessed);
+            }
+        }
+        
+        function incrementFileCount() {
+            filesProcessed++;
+            localStorage.setItem('plansift-files-processed', filesProcessed.toString());
+            console.log("Files processed:", filesProcessed);
+        }
         
         // Index Parser State
         let indexParserState = {
@@ -563,12 +639,11 @@
         }
         
         // --- Core Application Logic ---
+        let pendingFile = null;
+
         async function loadFile(file) {
             runSearchBtn.disabled = true;
             parseIndexBtn.classList.add('hidden');
-            
-            // Reset search count for new file
-            resetSearchCountForNewFile();
         
             if (!file || file.type !== 'application/pdf') {
                 showNotification('Please select a valid PDF file.', 'error');
@@ -576,7 +651,36 @@
                 currentPdf = null;
                 return;
             }
-            fileInfo.textContent = `File: ${file.name}`;
+            
+            // CHECK FILE LIMIT BEFORE LOADING
+            const canProcess = checkFileLimit();
+            console.log("Can process file?", canProcess);
+            
+            if (!canProcess) {
+                console.log("FILE LIMIT REACHED!");
+                pendingFile = file; // Store file to load after payment/email
+                
+                if (!userEmail) {
+                    console.log("No email - showing email modal");
+                    showEmailModal();
+                } else {
+                    console.log("Has email - showing payment modal");
+                    showPaymentModal();
+                }
+                return;
+            }
+            
+            // Continue with file loading
+            continueFileLoad(file);
+        }
+        
+        async function continueFileLoad(file = null) {
+            const fileToLoad = file || pendingFile;
+            if (!fileToLoad) return;
+            
+            pendingFile = null;
+            
+            fileInfo.textContent = `File: ${fileToLoad.name}`;
             const fileReader = new FileReader();
             fileReader.onload = async (e) => {
                 setLoading(true, "Loading PDF...");
@@ -585,8 +689,17 @@
                     const typedarray = new Uint8Array(e.target.result);
                     currentPdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
                     console.log("PDF loaded successfully");
+                    
+                    // INCREMENT FILE COUNT AFTER SUCCESSFUL LOAD
+                    incrementFileCount();
+                    
                     runSearchBtn.disabled = false;
                     parseIndexBtn.classList.remove('hidden');
+                    
+                    const remaining = (userEmail ? FREE_FILES_WITH_EMAIL : FREE_FILES) - filesProcessed;
+                    if (remaining > 0) {
+                        showNotification(`File loaded! ${remaining} free file${remaining !== 1 ? 's' : ''} remaining.`, 'success');
+                    }
                 } catch (error) {
                     console.error("Error loading PDF:", error);
                     fileInfo.textContent = 'Error: Could not load PDF. Check console for details.';
@@ -597,90 +710,54 @@
                     setLoading(false);
                 }
             };
-            fileReader.readAsArrayBuffer(file);
-        }
-        
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                loadFile(file);
-            }
+            fileReader.readAsArrayBuffer(fileToLoad);
         }
         
         async function runSearch() {
-            console.log("=== runSearch called ===");
-            console.log("searchCount BEFORE check:", searchCount);
-            
-            if (!currentPdf) {
-                showNotification('Please select a PDF file first.', 'error');
-                return;
-            }
-        
-            // CHECK SEARCH LIMIT
-            const canSearch = checkSearchLimit();
-            console.log("Can search?", canSearch);
-            
-            if (!canSearch) {
-                console.log("LIMIT REACHED!");
-                if (!userEmail) {
-                    console.log("No email - showing email modal");
-                    showEmailModal();
-                } else {
-                    console.log("Has email - showing payment modal");
-                    showPaymentModal();
-                }
-                return;
-            }
-        
-            const termsText = searchTermsInput.value.trim();
-            if (!termsText) {
-                showNotification('Please enter some search terms.', 'error');
-                return;
-            }
-            
-            // INCREMENT SEARCH COUNT
-            searchCount++;
-            console.log("Search count AFTER increment:", searchCount);
-            
-            const searchTerms = termsText.split(',').map(term => term.trim().toLowerCase().replace(/\s+/g, '')).filter(term => term.length > 0);
-            
-            if (searchTerms.length === 0) {
-                showNotification('Please enter valid search terms.', 'error');
-                return;
-            }
-        
-            setLoading(true, "Searching PDF...");
-            resultsOutput.innerHTML = ''; 
-            resultsSummary.innerHTML = '';
-            openPdfBtn.classList.add('hidden'); 
-            pageModifiersContainer.classList.add('hidden'); 
-            const matchedPages = new Set(); 
-        
-            for (let i = 1; i <= currentPdf.numPages; i++) {
-                setLoading(true, `Searching page ${i} of ${currentPdf.numPages}...`);
-                const page = await currentPdf.getPage(i);
-                const textContent = await page.getTextContent();
-                const pageText = textContent.items.map(item => item.str).join('').toLowerCase().replace(/\s+/g, '');
-        
-                const isMatch = searchTerms.some(term => pageText.includes(term));
-                if (isMatch) {
-                    matchedPages.add(page.pageNumber); 
-                }
-            }
-        
-            matchedPageNumbers = Array.from(matchedPages).sort((a,b) => a-b);
-            await rerenderAllResults();
-            updateResultsSummary();
-            setLoading(false);
-        
-            // Show remaining searches notification
-            if (!hasUnlockedCurrentFile) {
-                const remaining = (userEmail ? FREE_SEARCHES_WITH_EMAIL : FREE_SEARCHES) - searchCount;
-                if (remaining > 0) {
-                    showNotification(`${remaining} free search${remaining !== 1 ? 'es' : ''} remaining`, 'success');
-                }
-            }
+    console.log("=== runSearch called ===");
+    
+    if (!currentPdf) {
+        showNotification('Please select a PDF file first.', 'error');
+        return;
+    }
+
+    const termsText = searchTermsInput.value.trim();
+    if (!termsText) {
+        showNotification('Please enter some search terms.', 'error');
+        return;
+    }
+    
+    const searchTerms = termsText.split(',').map(term => term.trim().toLowerCase().replace(/\s+/g, '')).filter(term => term.length > 0);
+    
+    if (searchTerms.length === 0) {
+        showNotification('Please enter valid search terms.', 'error');
+        return;
+    }
+
+    setLoading(true, "Searching PDF...");
+    resultsOutput.innerHTML = ''; 
+    resultsSummary.innerHTML = '';
+    openPdfBtn.classList.add('hidden'); 
+    pageModifiersContainer.classList.add('hidden'); 
+    const matchedPages = new Set(); 
+
+    for (let i = 1; i <= currentPdf.numPages; i++) {
+        setLoading(true, `Searching page ${i} of ${currentPdf.numPages}...`);
+        const page = await currentPdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join('').toLowerCase().replace(/\s+/g, '');
+
+        const isMatch = searchTerms.some(term => pageText.includes(term));
+        if (isMatch) {
+            matchedPages.add(page.pageNumber); 
         }
+    }
+
+    matchedPageNumbers = Array.from(matchedPages).sort((a,b) => a-b);
+    await rerenderAllResults();
+    updateResultsSummary();
+    setLoading(false);
+}
         
         async function openFilteredPdfInNewTab() {
             if (!currentFileBuffer || matchedPageNumbers.length === 0) {
