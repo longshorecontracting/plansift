@@ -663,57 +663,57 @@
         }
 
         function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (file) {
-        loadFile(file);
-    }
-}
+            const file = event.target.files[0];
+            if (file) {
+                loadFile(file);
+            }
+        }
         
         async function runSearch() {
-    console.log("=== runSearch called ===");
-    
-    if (!currentPdf) {
-        showNotification('Please select a PDF file first.', 'error');
-        return;
-    }
-
-    const termsText = searchTermsInput.value.trim();
-    if (!termsText) {
-        showNotification('Please enter some search terms.', 'error');
-        return;
-    }
-    
-    const searchTerms = termsText.split(',').map(term => term.trim().toLowerCase().replace(/\s+/g, '')).filter(term => term.length > 0);
-    
-    if (searchTerms.length === 0) {
-        showNotification('Please enter valid search terms.', 'error');
-        return;
-    }
-
-    setLoading(true, "Searching PDF...");
-    resultsOutput.innerHTML = ''; 
-    resultsSummary.innerHTML = '';
-    openPdfBtn.classList.add('hidden'); 
-    pageModifiersContainer.classList.add('hidden'); 
-    const matchedPages = new Set(); 
-
-    for (let i = 1; i <= currentPdf.numPages; i++) {
-        setLoading(true, `Searching page ${i} of ${currentPdf.numPages}...`);
-        const page = await currentPdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join('').toLowerCase().replace(/\s+/g, '');
-
-        const isMatch = searchTerms.some(term => pageText.includes(term));
-        if (isMatch) {
-            matchedPages.add(page.pageNumber); 
+            console.log("=== runSearch called ===");
+            
+            if (!currentPdf) {
+                showNotification('Please select a PDF file first.', 'error');
+                return;
+            }
+        
+            const termsText = searchTermsInput.value.trim();
+            if (!termsText) {
+                showNotification('Please enter some search terms.', 'error');
+                return;
+            }
+            
+            const searchTerms = termsText.split(',').map(term => term.trim().toLowerCase().replace(/\s+/g, '')).filter(term => term.length > 0);
+            
+            if (searchTerms.length === 0) {
+                showNotification('Please enter valid search terms.', 'error');
+                return;
+            }
+        
+            setLoading(true, "Searching PDF...");
+            resultsOutput.innerHTML = ''; 
+            resultsSummary.innerHTML = '';
+            openPdfBtn.classList.add('hidden'); 
+            pageModifiersContainer.classList.add('hidden'); 
+            const matchedPages = new Set(); 
+        
+            for (let i = 1; i <= currentPdf.numPages; i++) {
+                setLoading(true, `Searching page ${i} of ${currentPdf.numPages}...`);
+                const page = await currentPdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join('').toLowerCase().replace(/\s+/g, '');
+        
+                const isMatch = searchTerms.some(term => pageText.includes(term));
+                if (isMatch) {
+                    matchedPages.add(page.pageNumber); 
+                }
+            }
+        
+            matchedPageNumbers = Array.from(matchedPages).sort((a,b) => a-b);
+            await rerenderAllResults();
+            updateResultsSummary();
+            setLoading(false);
         }
-    }
-
-    matchedPageNumbers = Array.from(matchedPages).sort((a,b) => a-b);
-    await rerenderAllResults();
-    updateResultsSummary();
-    setLoading(false);
-}
         
         async function openFilteredPdfInNewTab() {
             if (!currentFileBuffer || matchedPageNumbers.length === 0) {
