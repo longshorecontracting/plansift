@@ -1423,9 +1423,11 @@
                     loadFile(files[0]);
                 }
             });
-            
-            dropZone.addEventListener('click', () => {
-                fileInput.click();
+
+            dropZone.addEventListener('click', (e) => {
+              // If the click came from the label (or the input), do nothing.
+              if (e.target.closest('label[for="file-input"]') || e.target.id === 'file-input') return;
+              fileInput.click();
             });
         
             saveGroupBtn.addEventListener('click', saveSearchGroup);
