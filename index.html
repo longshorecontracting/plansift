@@ -276,6 +276,57 @@
             </div>
         </div>
     </div>
+
+    </div>
+</div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-2xl font-bold text-slate-800 mb-4">🔍 Search Limit Reached</h3>
+            <p class="text-slate-600 mb-6">
+                You've used your free searches. Unlock unlimited searches for this file!
+            </p>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-semibold text-slate-700">Unlock This File</span>
+                    <span class="text-2xl font-bold text-blue-600">$1</span>
+                </div>
+                <ul class="text-sm text-slate-600 space-y-1">
+                    <li>✓ Unlimited searches</li>
+                    <li>✓ 24-hour access</li>
+                    <li>✓ Instant activation</li>
+                </ul>
+            </div>
+    
+            <a href="#" id="unlock-file-btn" class="block w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 text-center mb-3">
+                Unlock Now - $1
+            </a>
+            
+            <button id="close-payment-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
+                Maybe Later
+            </button>
+        </div>
+    </div>
+    
+    <!-- Email Capture Modal -->
+    <div id="email-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-2xl font-bold text-slate-800 mb-4">Get 2 More Free Searches</h3>
+            <p class="text-slate-600 mb-6">Enter your email to continue with 2 additional free searches.</p>
+            
+            <input type="email" id="email-input" placeholder="your@email.com" class="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            
+            <button id="submit-email-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300 mb-3">
+                Continue Free
+            </button>
+            
+            <button id="close-email-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
+                Cancel
+            </button>
+        </div>
+    </div>
     
     <!-- Main Application Logic -->
     <script type="module">
@@ -1377,53 +1428,5 @@
         
         init(); 
     </script>
-
-    <!-- Payment Modal -->
-<div id="payment-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <h3 class="text-2xl font-bold text-slate-800 mb-4">🔍 Search Limit Reached</h3>
-        <p class="text-slate-600 mb-6">
-            You've used your free searches. Unlock unlimited searches for this file!
-        </p>
-        
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div class="flex items-center justify-between mb-2">
-                <span class="font-semibold text-slate-700">Unlock This File</span>
-                <span class="text-2xl font-bold text-blue-600">$1</span>
-            </div>
-            <ul class="text-sm text-slate-600 space-y-1">
-                <li>✓ Unlimited searches</li>
-                <li>✓ 24-hour access</li>
-                <li>✓ Instant activation</li>
-            </ul>
-        </div>
-
-        <a href="#" id="unlock-file-btn" class="block w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 text-center mb-3">
-            Unlock Now - $1
-        </a>
-        
-        <button id="close-payment-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
-            Maybe Later
-        </button>
-    </div>
-</div>
-
-<!-- Email Capture Modal -->
-<div id="email-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <h3 class="text-2xl font-bold text-slate-800 mb-4">Get 5 More Free Searches</h3>
-        <p class="text-slate-600 mb-6">Enter your email to continue with 5 additional free searches.</p>
-        
-        <input type="email" id="email-input" placeholder="your@email.com" class="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        
-        <button id="submit-email-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300 mb-3">
-            Continue Free
-        </button>
-        
-        <button id="close-email-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
-            Cancel
-        </button>
-    </div>
-</div>
 </body>
 </html>
