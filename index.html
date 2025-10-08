@@ -108,7 +108,7 @@
 
         <header class="bg-white p-6 rounded-lg shadow-md mb-8">
             <h1 class="text-3xl font-bold text-slate-700">PlanSift</h1>
-            <p class="text-slate-500 mt-1">Find pages and manage shared search groups in real-time.</p>
+            <p class="text-slate-500 mt-1">Find pages and manage search groups.</p>
         </header>
 
         <!-- Control Panel -->
@@ -150,9 +150,9 @@
                 <p class="text-xs text-slate-500 mt-1">Separate terms with a comma. Press Enter to search (Shift+Enter for a new line).</p>
             </div>
             
-            <!-- 3. Collaborative Search Groups -->
+            <!-- 3. Search Groups -->
             <div class="border-t border-slate-200 pt-4 mt-6">
-                 <label class="block text-lg font-semibold text-slate-600 mb-2">3. Manage Shared Search Groups</label>
+                 <label class="block text-lg font-semibold text-slate-600 mb-2">3. Manage Search Groups</label>
                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <div>
                              <label for="search-groups-dropdown" class="text-sm font-medium text-slate-600">Load a saved group:</label>
@@ -269,7 +269,7 @@
             </div>
             <!-- Content -->
             <div id="index-canvas-wrapper" class="flex-grow p-4 overflow-auto bg-slate-100 relative">
-                <div class="relative"> <!-- Added a relative container for canvas and selection box -->
+                <div class="relative">
                     <canvas id="index-parser-canvas"></canvas>
                     <div id="selection-box" class="absolute border-2 border-dashed border-blue-500 bg-blue-500 bg-opacity-20 pointer-events-none" style="display: none;"></div>
                 </div>
@@ -279,11 +279,6 @@
     
     <!-- Main Application Logic -->
     <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
         // --- DOM Element References ---
         const fileInput = document.getElementById('file-input');
         const dropZone = document.getElementById('drop-zone');
@@ -334,13 +329,10 @@
 
         // --- Application State ---
         let currentPdf = null;
-        let currentFileBuffer = null; //new line to fix the empty filter pdf
+        let currentFileBuffer = null;
         let matchedPageNumbers = [];
         let searchGroups = [];
-        let db, auth, userId;
-        let isAuthReady = false;
-        let groupsCollectionRef;
-        const appId = 'pdf-search-tool-v1'; // Static App ID for the live site
+        const STORAGE_KEY = 'plansift-search-groups';
 
         // Index Parser State
         let indexParserState = {
@@ -352,50 +344,88 @@
             selectionRect: { x: 0, y: 0, w: 0, h: 0 },
             currentRenderedPage: null,
             currentViewport: null,
-            currentScale: 'auto', // 'auto' or a number
+            currentScale: 'auto',
         };
 
-        // --- Firebase Initialization ---
-        async function initializeFirebase() {
+        // --- LocalStorage Functions ---
+        function loadGroupsFromStorage() {
             try {
-                // Hardcoded Firebase config from the working script
-                const firebaseConfig = {
-                        apiKey: "AIzaSyA6Yp2_XzVqnI3DtVUV_Ianqegch8LpHNo",
-                        authDomain: "planshift-7ebb2.firebaseapp.com",
-                        projectId: "planshift-7ebb2",
-                        storageBucket: "planshift-7ebb2.firebasestorage.app",
-                        messagingSenderId: "902958199212",
-                        appId: "1:902958199212:web:49e8197780ecb1916d4a09",
-                        measurementId: "G-44R7BP8278"
-
-                };
-
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                groupsCollectionRef = collection(db, `/artifacts/${appId}/public/data/searchGroups`);
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        isAuthReady = true;
-                        console.log("Authenticated with UID:", userId);
-                        loadGroupsFromFirestore();
-                    } else {
-                        console.log("User not signed in.");
-                        isAuthReady = false;
-                    }
-                });
-
-                await signInAnonymously(auth);
-
+                const stored = localStorage.getItem(STORAGE_KEY);
+                searchGroups = stored ? JSON.parse(stored) : [];
+                renderSearchGroupsDropdown();
             } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                showNotification("Could not connect to the collaborative service.", "error");
+                console.error("Error loading groups from storage:", error);
+                searchGroups = [];
             }
         }
+
+        function saveGroupsToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(searchGroups));
+            } catch (error) {
+                console.error("Error saving groups to storage:", error);
+                showNotification("Could not save groups.", "error");
+            }
+        }
+
+        function saveSearchGroup() {
+            const name = newGroupNameInput.value.trim();
+            const terms = searchTermsInput.value.trim();
+            if (!name) return showNotification("Please enter a name for the group.", "error");
+            if (!terms) return showNotification("Please enter search terms to save.", "error");
+
+            // Check if name already exists
+            const existingIndex = searchGroups.findIndex(g => g.name === name);
+            if (existingIndex !== -1) {
+                // Update existing group
+                searchGroups[existingIndex].terms = terms;
+                showNotification(`Group "${name}" updated.`, "success");
+            } else {
+                // Add new group
+                searchGroups.push({ id: Date.now().toString(), name, terms });
+                showNotification(`Group "${name}" saved.`, "success");
+            }
+
+            saveGroupsToStorage();
+            renderSearchGroupsDropdown();
+            newGroupNameInput.value = '';
+        }
+
+        function loadSearchGroup() {
+            const selectedId = searchGroupsDropdown.value;
+            const selectedGroup = searchGroups.find(g => g.id === selectedId);
+            if (selectedGroup) {
+                searchTermsInput.value = selectedGroup.terms;
+            }
+        }
+
+        function deleteSearchGroup() {
+            const selectedId = searchGroupsDropdown.value;
+            if (!selectedId) return;
+
+            const selectedGroup = searchGroups.find(g => g.id === selectedId);
+
+            showConfirmation(`Delete the group "${selectedGroup.name}"?`, () => {
+                searchGroups = searchGroups.filter(g => g.id !== selectedId);
+                saveGroupsToStorage();
+                renderSearchGroupsDropdown();
+                showNotification(`Group "${selectedGroup.name}" deleted.`, "success");
+            });
+        }
         
+        function renderSearchGroupsDropdown() {
+            const selectedValue = searchGroupsDropdown.value;
+            searchGroupsDropdown.innerHTML = '<option value="">-- Select a Group --</option>';
+            const sortedGroups = [...searchGroups].sort((a, b) => a.name.localeCompare(b.name));
+            for (const group of sortedGroups) {
+                const option = document.createElement('option');
+                option.value = group.id;
+                option.textContent = group.name;
+                searchGroupsDropdown.appendChild(option);
+            }
+            searchGroupsDropdown.value = selectedValue;
+        }
+
         // --- Core Application Logic ---
 
         async function loadFile(file) {
@@ -413,7 +443,7 @@
             fileReader.onload = async (e) => {
                 setLoading(true, "Loading PDF...");
                 try {
-                    currentFileBuffer = e.target.result; // Save the file buffer
+                    currentFileBuffer = e.target.result;
                     const typedarray = new Uint8Array(e.target.result);
                     currentPdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
                     console.log("loadFile: PDF loaded successfully. currentPdf object:", currentPdf);
@@ -424,7 +454,7 @@
                     fileInfo.textContent = 'Error: Could not load PDF. Check console for details.';
                     showNotification('Error: Could not load PDF.', 'error');
                     currentPdf = null;
-                    currentFileBuffer = null; // Clear the buffer on error
+                    currentFileBuffer = null;
                 } finally {
                     setLoading(false);
                 }
@@ -484,7 +514,6 @@
         }
         
         async function openFilteredPdfInNewTab() {
-            // This condition now checks your new variable
             if (!currentFileBuffer || matchedPageNumbers.length === 0) {
                 showNotification("No file or pages to open.", "error");
                 return;
@@ -492,7 +521,6 @@
             
             setLoading(true, "Creating new PDF...");
             try {
-                // Use the stored buffer directly instead of reading the file again
                 const originalPdfBytes = currentFileBuffer;
                 const { PDFDocument } = PDFLib; 
                 const pdfDoc = await PDFDocument.load(originalPdfBytes);
@@ -522,7 +550,6 @@
             wrapper.className = 'page-wrapper flex-shrink-0 w-64';
             wrapper.id = `page-wrapper-${pageNum}`;
 
-            // Store the page number directly on the element for easy access later.
             wrapper.dataset.pageNumber = pageNum;
 
             const removeBtn = document.createElement('button');
@@ -532,7 +559,7 @@
             removeBtn.onclick = () => removePage(pageNum);
             
             const unscaledViewport = page.getViewport({ scale: 1.0 });
-            const containerWidth = 256; // w-64 is 256px
+            const containerWidth = 256;
             const scale = (containerWidth / unscaledViewport.width); 
             const viewport = page.getViewport({ scale: scale });
 
@@ -546,7 +573,6 @@
             pageTitle.className = 'text-sm font-bold text-center text-slate-600 mb-1';
             pageTitle.textContent = `Page ${pageNum}`;
 
-            // Add event listeners for the magnifier popover
             wrapper.addEventListener('mouseenter', handleMouseEnter);
             wrapper.addEventListener('mouseleave', handleMouseLeave);
             
@@ -559,7 +585,7 @@
         }
 
         async function rerenderAllResults() {
-            handleMouseLeave(); // Add this line to clean up before clearing the results
+            handleMouseLeave();
             resultsOutput.innerHTML = '<p class="w-full px-2">Loading page previews...</p>'; 
             if (matchedPageNumbers.length > 0) {
                 resultsOutput.innerHTML = '';
@@ -573,7 +599,7 @@
         }
 
         function removePage(pageNum) {
-            handleMouseLeave(); // Add this line to clean up any active popover
+            handleMouseLeave();
             const wrapperToRemove = document.getElementById(`page-wrapper-${pageNum}`);
             if (wrapperToRemove) wrapperToRemove.remove();
             matchedPageNumbers = matchedPageNumbers.filter(num => num !== pageNum);
@@ -587,7 +613,7 @@
                  openPdfBtn.classList.remove('hidden');
                  pageModifiersContainer.classList.remove('hidden'); 
             } else {
-                 handleMouseLeave(); // Add this line for when the last page is removed
+                 handleMouseLeave();
                  resultsSummary.innerHTML = '';
                  openPdfBtn.classList.add('hidden');
                  pageModifiersContainer.classList.add('hidden');
@@ -597,11 +623,6 @@
         
         // --- Page Adding/Removing Functions ---
 
-        /**
-         * Parses a string like "1-3, 5, 8" into an array of numbers [1, 2, 3, 5, 8].
-         * @param {string} str The string to parse.
-         * @returns {number[]} An array of page numbers.
-         */
         function parsePageString(str) {
             if (!str || typeof str !== 'string') return [];
             
@@ -674,76 +695,6 @@
             setLoading(false);
         }
 
-        // --- Search Group Functions (Firestore) ---
-
-        function loadGroupsFromFirestore() {
-            if (!isAuthReady) return;
-            onSnapshot(groupsCollectionRef, (snapshot) => {
-                searchGroups = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                renderSearchGroupsDropdown();
-            }, (error) => {
-                console.error("Error listening to group changes: ", error);
-                showNotification("Could not load shared groups.", "error");
-            });
-        }
-
-        async function saveSearchGroup() {
-            if (!isAuthReady) return showNotification("Not connected to collaborative service.", "error");
-            const name = newGroupNameInput.value.trim();
-            const terms = searchTermsInput.value.trim();
-            if (!name) return showNotification("Please enter a name for the group.", "error");
-            if (!terms) return showNotification("Please enter search terms to save.", "error");
-
-            try {
-                await addDoc(groupsCollectionRef, { name, terms });
-                newGroupNameInput.value = '';
-                showNotification(`Group "${name}" saved.`, "success");
-            } catch (error) {
-                console.error("Error saving group:", error);
-                showNotification("Could not save group.", "error");
-            }
-        }
-
-        function loadSearchGroup() {
-            const selectedId = searchGroupsDropdown.value;
-            const selectedGroup = searchGroups.find(g => g.id === selectedId);
-            if (selectedGroup) {
-                searchTermsInput.value = selectedGroup.terms;
-            }
-        }
-
-        async function deleteSearchGroup() {
-            if (!isAuthReady) return showNotification("Not connected to collaborative service.", "error");
-            const selectedId = searchGroupsDropdown.value;
-            if (!selectedId) return;
-
-            const selectedGroup = searchGroups.find(g => g.id === selectedId);
-
-            showConfirmation(`Delete the group "${selectedGroup.name}"?`, async () => {
-                try {
-                    const docRef = doc(db, `/artifacts/${appId}/public/data/searchGroups/${selectedId}`);
-                    await deleteDoc(docRef);
-                    showNotification(`Group "${selectedGroup.name}" deleted.`, "success");
-                } catch (error) {
-                    console.error("Error deleting group: ", error);
-                    showNotification("Could not delete group.", "error");
-                }
-            });
-        }
-        
-        function renderSearchGroupsDropdown() {
-            const selectedValue = searchGroupsDropdown.value;
-            searchGroupsDropdown.innerHTML = '<option value="">-- Select a Group --</option>';
-            const sortedGroups = [...searchGroups].sort((a, b) => a.name.localeCompare(b.name));
-            for (const group of sortedGroups) {
-                const option = document.createElement('option');
-                option.value = group.id;
-                option.textContent = group.name;
-                searchGroupsDropdown.appendChild(option);
-            }
-            searchGroupsDropdown.value = selectedValue;
-        }
-
         // --- Index Parser Functions ---
 
         function openIndexParser() {
@@ -751,7 +702,7 @@
             indexParserState.pdf = currentPdf;
             indexParserState.totalPages = currentPdf.numPages;
             indexParserState.currentPageNum = 1;
-            indexParserState.currentScale = 'auto'; // Reset zoom on open
+            indexParserState.currentScale = 'auto';
             indexPageCount.textContent = indexParserState.totalPages;
             indexPageNumInput.value = 1;
             indexParserModal.classList.remove('hidden');
@@ -760,7 +711,6 @@
 
         function closeIndexParser() {
             indexParserModal.classList.add('hidden');
-            // Clear canvas to free memory
             indexParserCanvas.width = 0;
             indexParserCanvas.height = 0;
             selectionBox.style.display = 'none';
@@ -778,7 +728,7 @@
                 const unscaledViewport = page.getViewport({ scale: 1.0 });
 
                 if (indexParserState.currentScale === 'auto') {
-                    const wrapperWidth = indexCanvasWrapper.clientWidth - 40; // Subtract padding
+                    const wrapperWidth = indexCanvasWrapper.clientWidth - 40;
                     scale = wrapperWidth / unscaledViewport.width;
                 } else {
                     scale = indexParserState.currentScale;
@@ -816,7 +766,7 @@
                 indexParserState.currentPageNum = newPageNum;
                 renderIndexPage(newPageNum);
             } else {
-                indexPageNumInput.value = indexParserState.currentPageNum; // Reset to valid
+                indexPageNumInput.value = indexParserState.currentPageNum;
             }
         }
 
@@ -893,8 +843,6 @@
             }
 
             const foundIndexData = [];
-            // The key is the original term. The value is an array of cleaned words.
-            // e.g., "A0.1 COVER" -> ['a0.1', 'cover']
             const termsToFind = new Map(
                 terms.map(term => {
                     const cleanedWords = term.toLowerCase().match(/[\w.]+/g) || [];
@@ -915,22 +863,19 @@
 
                 const page = await currentPdf.getPage(i);
                 const textContent = await page.getTextContent();
-                // Join with spaces and lowercase once per page.
                 const pageText = textContent.items.map(item => item.str).join(' ').toLowerCase();
 
-                // Iterate over the map of terms we still need to find.
                 for (const [originalTerm, searchWords] of termsToFind.entries()) {
                     if (searchWords.length === 0) {
-                        termsToFind.delete(originalTerm); // Remove empty terms
+                        termsToFind.delete(originalTerm);
                         continue;
                     }
                     
-                    // Check if every search word is present on the page.
                     const allWordsFound = searchWords.every(word => pageText.includes(word));
 
                     if (allWordsFound) {
                         foundIndexData.push({ description: originalTerm, pageNum: i });
-                        termsToFind.delete(originalTerm); // Remove the found term by its original key.
+                        termsToFind.delete(originalTerm);
                     }
                 }
             }
@@ -1067,7 +1012,6 @@
                 checkbox.id = `index-item-${index}`;
                 checkbox.className = 'mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500';
                 checkbox.dataset.pageNum = item.pageNum;
-                // Add listener to individual checkbox to update the main "Select All" state
                 checkbox.addEventListener('change', updateSelectAllCheckboxState);
 
                 const label = document.createElement('label');
@@ -1086,7 +1030,7 @@
             });
 
             parsedIndexContainer.classList.remove('hidden');
-            updateSelectAllCheckboxState(); // Update state after rendering all items
+            updateSelectAllCheckboxState();
         }
 
         async function addSelectedIndexPages() {
@@ -1170,7 +1114,7 @@
             const pageNum = parseInt(event.currentTarget.dataset.pageNumber, 10);
             if (!currentPdf || !pageNum) return;
             
-            handleMouseLeave(); // Ensure no other popovers are open
+            handleMouseLeave();
             
             const popover = document.createElement('div');
             popover.id = 'magnifier-popover';
@@ -1181,8 +1125,7 @@
             popover.appendChild(loadingMessage);
             document.body.appendChild(popover);
             
-            // 1. IMPROVED QUALITY: Render at a higher resolution
-            const magnifiedWidth = 1000; // Increased from 500 for better quality USE THIS TO CHANGE ZOOM SCALE OF PAGE PREVIEW
+            const magnifiedWidth = 1000;
             const page = await currentPdf.getPage(pageNum);
             const unscaledViewport = page.getViewport({ scale: 1.0 });
             const scale = magnifiedWidth / unscaledViewport.width;
@@ -1195,36 +1138,30 @@
             
             await page.render({ canvasContext: context, viewport: viewport }).promise;
             
-            popover.innerHTML = ''; // Clear the 'Loading...' text
+            popover.innerHTML = '';
             popover.appendChild(canvas);
 
-            // 2. IMPROVED POSITIONING: Dynamically place the popover
             const popoverRect = popover.getBoundingClientRect();
             const cursorX = event.clientX;
             const cursorY = event.clientY;
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
-            const margin = 10; // Margin from cursor and viewport edges
+            const margin = 10;
 
             let top, left;
 
-            // Position vertically first to avoid obscuring content above/below
-            // If cursor is in the top 60% of the screen, show popover below it
             if (cursorY < viewportHeight * 0.6) {
                 top = cursorY + margin;
-            } else { // Otherwise, show it above
+            } else {
                 top = cursorY - popoverRect.height - margin;
             }
 
-            // Position horizontally
-            // If cursor is on the left half, show popover to the right
             if (cursorX < viewportWidth / .05) {
                 left = cursorX + margin;
-            } else { // Otherwise, show it to the left
+            } else {
                 left = cursorX - popoverRect.width - margin;
             }
             
-            // Final checks to prevent going off-screen
             if (top < margin) top = margin;
             if (left < margin) left = margin;
             if (top + popoverRect.height > viewportHeight - margin) {
@@ -1252,16 +1189,13 @@
             runSearchBtn.disabled = true; 
             fileInput.addEventListener('change', handleFileSelect);
 
-            // Add keydown listener for the search textarea
             searchTermsInput.addEventListener('keydown', (e) => {
-                // Check if the key is 'Enter' and the Shift key is not pressed
                 if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault(); // Prevent adding a new line in the textarea
-                    runSearchBtn.click(); // Programmatically click the search button
+                    e.preventDefault();
+                    runSearchBtn.click();
                 }
             });
 
-            // Drag and Drop Listeners
             dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1280,14 +1214,11 @@
                 dropZone.classList.remove('dragover');
                 const files = e.dataTransfer.files;
                 if (files.length) {
-                    // This ensures other parts of the code that might reference
-                    // fileInput.files (like openFilteredPdfInNewTab) will still work.
                     fileInput.files = files; 
                     loadFile(files[0]);
                 }
             });
             
-            // Make the whole dropzone clickable to trigger the hidden file input
             dropZone.addEventListener('click', () => {
                 fileInput.click();
             });
@@ -1302,7 +1233,6 @@
             addSelectedIndexBtn.addEventListener('click', addSelectedIndexPages);
             selectAllIndexCheckbox.addEventListener('change', handleSelectAllIndex);
 
-            // Index Parser Event Listeners
             parseIndexBtn.addEventListener('click', openIndexParser);
             cancelIndexParserBtn.addEventListener('click', closeIndexParser);
             indexPrevPageBtn.addEventListener('click', () => changeIndexPage(-1));
@@ -1313,12 +1243,11 @@
             zoomOutBtn.addEventListener('click', handleZoomOut);
             zoomFitBtn.addEventListener('click', handleZoomFit);
             
-            // Selection listeners
             indexParserCanvas.parentElement.addEventListener('mousedown', handleSelectionStart);
             indexParserCanvas.parentElement.addEventListener('mousemove', handleSelectionMove);
             indexParserCanvas.parentElement.addEventListener('mouseup', handleSelectionEnd);
 
-            initializeFirebase();
+            loadGroupsFromStorage();
         }
 
         init(); 
