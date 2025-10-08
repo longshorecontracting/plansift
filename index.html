@@ -1400,30 +1400,25 @@
                     runSearchBtn.click();
                 }
             });
-        
+            
             dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.add('dragover');
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'copy';
+              dropZone.classList.add('dragover');
             });
-        
             dropZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.remove('dragover');
+              e.preventDefault();
+              dropZone.classList.remove('dragover');
             });
-        
             dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length) {
-                    fileInput.files = files; 
-                    loadFile(files[0]);
-                }
+              e.preventDefault();
+              dropZone.classList.remove('dragover');
+              const f = e.dataTransfer.files?.[0];
+              if (f) loadFile(f);
+              fileInput.value = '';
             });
 
+            
             dropZone.addEventListener('click', (e) => {
               // If the click came from the label (or the input), do nothing.
               if (e.target.closest('label[for="file-input"]') || e.target.id === 'file-input') return;
