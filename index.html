@@ -430,7 +430,7 @@
         
         function showPaymentModal() {
             console.log("Showing payment modal");
-            unlockFileBtn.href = STRIPE_PAYMENT_LINK;
+            unlockFileBtn.href = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00';
             paymentModal.classList.remove('hidden');
         }
         
@@ -510,76 +510,6 @@
             currentViewport: null,
             currentScale: 'auto',
         };
-        
-        // --- Payment & Search Limit Functions ---
-        function checkSearchLimit() {
-            console.log("=== checkSearchLimit ===");
-            console.log("searchCount:", searchCount);
-            console.log("hasUnlockedCurrentFile:", hasUnlockedCurrentFile);
-            console.log("userEmail:", userEmail);
-            
-            if (hasUnlockedCurrentFile) {
-                console.log("File unlocked - unlimited searches");
-                return true;
-            }
-        
-            if (userEmail) {
-                console.log(`Has email: ${searchCount} < ${FREE_SEARCHES_WITH_EMAIL}`);
-                return searchCount < FREE_SEARCHES_WITH_EMAIL;
-            } else {
-                console.log(`No email: ${searchCount} < ${FREE_SEARCHES}`);
-                return searchCount < FREE_SEARCHES;
-            }
-        }
-        
-        function showEmailModal() {
-            console.log("Showing email modal");
-            emailModal.classList.remove('hidden');
-        }
-        
-        function closeEmailModal() {
-            console.log("Closing email modal");
-            emailModal.classList.add('hidden');
-        }
-        
-        function showPaymentModal() {
-            console.log("Showing payment modal");
-            unlockFileBtn.href = STRIPE_PAYMENT_LINK;
-            paymentModal.classList.remove('hidden');
-        }
-        
-        function closePaymentModal() {
-            console.log("Closing payment modal");
-            paymentModal.classList.add('hidden');
-        }
-        
-        function handleEmailSubmit() {
-            const email = emailInput.value.trim();
-            
-            if (!email || !email.includes('@')) {
-                showNotification('Please enter a valid email address.', 'error');
-                return;
-            }
-        
-            userEmail = email;
-            localStorage.setItem('plansift-user-email', email);
-            closeEmailModal();
-            showNotification(`Thanks! You now have ${FREE_SEARCHES_WITH_EMAIL - searchCount} more free searches.`, 'success');
-        }
-        
-        function resetSearchCountForNewFile() {
-            console.log("Resetting search count for new file");
-            searchCount = 0;
-            hasUnlockedCurrentFile = false;
-        }
-        
-        function loadUserEmail() {
-            const savedEmail = localStorage.getItem('plansift-user-email');
-            if (savedEmail) {
-                userEmail = savedEmail;
-                console.log("Loaded saved email:", userEmail);
-            }
-        }
         
         // --- LocalStorage Functions ---
         function loadGroupsFromStorage() {
