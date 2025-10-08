@@ -666,11 +666,16 @@
             fileReader.readAsArrayBuffer(fileToLoad);
         }
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                loadFile(file);
-            }
+        function handleFileSelect(e) {
+          const [file] = e.target.files || [];
+          if (!file) {
+            showNotification('No file selected.', 'error');
+            return;
+          }
+          loadFile(file);
+        
+          // allow selecting the same file again to retrigger change
+          e.target.value = '';
         }
         
         async function runSearch() {
