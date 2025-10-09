@@ -799,13 +799,8 @@
           // allow selecting the same file again to retrigger change
           e.target.value = '';
         }
-        
+
         async function runSearch() {
-            const termsText = searchTermsInput.value.trim();
-            UserTracking.track('search_initiated', { 
-                searchTerms: termsText,
-                termCount: termsText.split(',').length
-            });
             console.log("=== runSearch called ===");
             
             if (!currentPdf) {
@@ -814,10 +809,17 @@
             }
         
             const termsText = searchTermsInput.value.trim();
+            
             if (!termsText) {
                 showNotification('Please enter some search terms.', 'error');
                 return;
             }
+            
+            // NOW you can use it in tracking
+            UserTracking.track('search_initiated', { 
+                searchTerms: termsText,
+                termCount: termsText.split(',').length
+            });
             
             const searchTerms = termsText.split(',').map(term => term.trim().toLowerCase().replace(/\s+/g, '')).filter(term => term.length > 0);
             
