@@ -288,28 +288,67 @@
 
     <!-- Payment Modal -->
     <div id="payment-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-2xl font-bold text-slate-800 mb-4">🔍 Search Limit Reached</h3>
-            <p class="text-slate-600 mb-6">
-                You've reached your free search limit. Unlock unlimited searches for this file!
-            </p>
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold text-slate-800 mb-4">🔍 Choose Your Plan</h3>
             
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="font-semibold text-slate-700">Unlock This File</span>
-                    <span class="text-2xl font-bold text-blue-600">$1</span>
-                </div>
-                <ul class="text-sm text-slate-600 space-y-1">
-                    <li>✓ Unlimited searches per file</li>
-                    <li>✓ 24-hour access</li>
-                    <li>✓ Instant activation</li>
-                </ul>
+            <!-- Email collection if needed -->
+            <div id="payment-email-section" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p class="text-sm text-slate-600 mb-2">Enter your email to continue:</p>
+                <input type="email" id="payment-email-input" placeholder="your@email.com" 
+                    class="w-full p-2 border border-slate-300 rounded-md">
             </div>
     
-            <a href="#" id="unlock-file-btn" class="block w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 text-center mb-3">
-                Unlock Now - $1
-            </a>
-            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <!-- Pay as you go -->
+                <div class="border border-slate-200 rounded-lg p-4">
+                    <h4 class="font-bold text-lg mb-2">Single File</h4>
+                    <div class="text-3xl font-bold text-blue-600 mb-3">$1</div>
+                    <ul class="text-sm text-slate-600 space-y-2 mb-4">
+                        <li>✓ Current file only</li>
+                        <li>✓ Unlimited searches</li>
+                        <li>✓ 24-hour access</li>
+                    </ul>
+                    <button class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+                        Unlock This File
+                    </button>
+                </div>
+    
+                <!-- Most popular -->
+                <div class="border-2 border-green-500 rounded-lg p-4 relative">
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                        BEST VALUE
+                    </div>
+                    <h4 class="font-bold text-lg mb-2">Bundle Pack</h4>
+                    <div class="text-3xl font-bold text-green-600 mb-1">$9</div>
+                    <div class="text-sm text-slate-500 line-through mb-2">$20 value</div>
+                    <ul class="text-sm text-slate-600 space-y-2 mb-4">
+                        <li>✓ 20 files</li>
+                        <li>✓ Never expires</li>
+                        <li>✓ Use anytime</li>
+                        <li class="font-semibold text-green-600">Save 55%!</li>
+                    </ul>
+                    <button class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition">
+                        Get Bundle Pack
+                    </button>
+                </div>
+    
+                <!-- Monthly -->
+                <div class="border border-slate-200 rounded-lg p-4">
+                    <h4 class="font-bold text-lg mb-2">Monthly Pro</h4>
+                    <div class="text-3xl font-bold text-purple-600 mb-1">$19</div>
+                    <div class="text-sm text-slate-500 mb-2">/month</div>
+                    <ul class="text-sm text-slate-600 space-y-2 mb-4">
+                        <li>✓ Unlimited files</li>
+                        <li>✓ Priority support</li>
+                        <li>✓ Bulk processing</li>
+                        <li>✓ Cancel anytime</li>
+                    </ul>
+                    <button class="w-full bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition">
+                        Go Pro Monthly
+                    </button>
+                </div>
+            </div>
+    
             <button id="close-payment-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
                 Maybe Later
             </button>
@@ -624,26 +663,44 @@
                 return;
             }
             
-            // CHECK FILE LIMIT BEFORE LOADING
+            // ALWAYS check for email first if we don't have one
+            if (!userEmail && filesProcessed >= FREE_FILES) {
+                console.log("No email collected yet - showing email modal first");
+                pendingFile = file;
+                showEmailModal();
+                return;
+            }
+            
+            // Then check file limits
             const canProcess = checkFileLimit();
             console.log("Can process file?", canProcess);
             
             if (!canProcess) {
                 console.log("FILE LIMIT REACHED!");
-                pendingFile = file; // Store file to load after payment/email
-                
-                if (!userEmail) {
-                    console.log("No email - showing email modal");
-                    showEmailModal();
-                } else {
-                    console.log("Has email - showing payment modal");
-                    showPaymentModal();
-                }
+                pendingFile = file;
+                showPaymentModal();
                 return;
             }
             
-            // Continue with file loading
             continueFileLoad(file);
+        }
+        
+        // Also add email prompt to payment modal as backup
+        function showPaymentModal() {
+            // If no email yet, add email field to payment modal
+            if (!userEmail) {
+                // Modify payment modal to include email collection
+                const emailSection = `
+                    <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p class="text-sm text-slate-600 mb-2">Enter your email to save your progress:</p>
+                        <input type="email" id="payment-email-input" placeholder="your@email.com" 
+                            class="w-full p-2 border border-slate-300 rounded-md">
+                    </div>
+                `;
+                // Insert this before the payment options
+            }
+            
+            paymentModal.classList.remove('hidden');
         }
         
         async function continueFileLoad(file = null) {
