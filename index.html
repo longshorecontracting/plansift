@@ -507,9 +507,19 @@
         }
         
         function showPaymentModal() {
+            UserTracking.track('payment_modal_shown', {
+                hasEmail: !!userEmail,
+                filesProcessed: filesProcessed
+            });
+            
             console.log("Showing payment modal");
             unlockFileBtn.href = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00';
             paymentModal.classList.remove('hidden');
+
+            // Add click handlers for payment options
+            document.getElementById('unlock-file-btn').addEventListener('click', () => {
+            UserTracking.track('payment_selected', { plan: 'single_file', price: 1 });
+            });
         }
         
         function closePaymentModal() {
@@ -519,11 +529,14 @@
         
         async function handleEmailSubmit() {
             const email = emailInput.value.trim();
-            
+
             if (!email || !email.includes('@')) {
+                UserTracking.track('email_validation_failed');
                 showNotification('Please enter a valid email address.', 'error');
                 return;
             }
+    
+            UserTracking.track('email_submitted', { email: email });
         
             // First, save locally regardless of Apps Script success
             userEmail = email;
@@ -688,6 +701,7 @@
         let pendingFile = null;
 
         async function loadFile(file) {
+            UserTracking.track('file_selected', { fileName: file?.name });
             runSearchBtn.disabled = true;
             parseIndexBtn.classList.add('hidden');
         
@@ -695,6 +709,19 @@
                 showNotification('Please select a valid PDF file.', 'error');
                 fileInfo.textContent = 'Please select a valid PDF file.';
                 currentPdf = null;
+                return;
+            }
+
+            if (!canProcess) {
+                UserTracking.track('file_limit_reached');
+        
+                if (!userEmail) {
+                    UserTracking.track('email_modal_shown');
+                    showEmailModal();
+                } else {
+                    UserTracking.track('payment_modal_shown');
+                    showPaymentModal();
+                }
                 return;
             }
             
@@ -790,6 +817,11 @@
         }
         
         async function runSearch() {
+            const termsText = searchTermsInput.value.trim();
+            UserTracking.track('search_initiated', { 
+                searchTerms: termsText,
+                termCount: termsText.split(',').length
+            });
             console.log("=== runSearch called ===");
             
             if (!currentPdf) {
@@ -833,9 +865,18 @@
             await rerenderAllResults();
             updateResultsSummary();
             setLoading(false);
+
+            UserTracking.track('search_completed', { 
+                pagesFound: matchedPageNumbers.length,
+                totalPages: currentPdf?.numPages
+            });
         }
         
         async function openFilteredPdfInNewTab() {
+            UserTracking.track('pdf_exported', { 
+                pageCount: matchedPageNumbers.length 
+            });
+            
             if (!currentFileBuffer || matchedPageNumbers.length === 0) {
                 showNotification("No file or pages to open.", "error");
                 return;
@@ -1504,7 +1545,12 @@
             console.log("=== PlanSift Initializing ===");
             runSearchBtn.disabled = true; 
             fileInput.addEventListener('change', handleFileSelect);
-        
+            UserTracking.track('session_start', {
+                referrer: document.referrer,
+                url: window.location.href,
+                userAgent: navigator.userAgent
+            });
+
             searchTermsInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
