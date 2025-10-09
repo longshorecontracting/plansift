@@ -458,7 +458,7 @@
             // Try to save to Google Sheets (but don't block on failure)
             try {
                 // Use URL parameters as a fallback for CORS issues
-                const scriptUrl = 'YOUR_APPS_SCRIPT_URL_HERE';
+                const scriptUrl = 'https://script.google.com/macros/s/AKfycbybBpGmLa42qunUqQNEQZkwlWiVkdcMupxVi-yCJvqCwsmopZJ5HUzOyupis4nVg4GA/exec';
                 const params = new URLSearchParams({
                     email: email,
                     timestamp: new Date().toISOString(),
