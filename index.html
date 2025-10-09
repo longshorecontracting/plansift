@@ -507,19 +507,21 @@
         }
         
         function showPaymentModal() {
-            UserTracking.track('payment_modal_shown', {
-                hasEmail: !!userEmail,
-                filesProcessed: filesProcessed
-            });
+            // If no email yet, check first
+            if (!userEmail) {
+                UserTracking.track('payment_modal_shown_no_email', {
+                    filesProcessed: filesProcessed
+                });
+            } else {
+                UserTracking.track('payment_modal_shown', {
+                    hasEmail: true,
+                    filesProcessed: filesProcessed
+                });
+            }
             
             console.log("Showing payment modal");
             unlockFileBtn.href = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00';
             paymentModal.classList.remove('hidden');
-
-            // Add click handlers for payment options
-            document.getElementById('unlock-file-btn').addEventListener('click', () => {
-            UserTracking.track('payment_selected', { plan: 'single_file', price: 1 });
-            });
         }
         
         function closePaymentModal() {
@@ -745,24 +747,6 @@
             }
             
             continueFileLoad(file);
-        }
-        
-        // Also add email prompt to payment modal as backup
-        function showPaymentModal() {
-            // If no email yet, add email field to payment modal
-            if (!userEmail) {
-                // Modify payment modal to include email collection
-                const emailSection = `
-                    <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p class="text-sm text-slate-600 mb-2">Enter your email to save your progress:</p>
-                        <input type="email" id="payment-email-input" placeholder="your@email.com" 
-                            class="w-full p-2 border border-slate-300 rounded-md">
-                    </div>
-                `;
-                // Insert this before the payment options
-            }
-            
-            paymentModal.classList.remove('hidden');
         }
         
         async function continueFileLoad(file = null) {
