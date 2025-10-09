@@ -442,9 +442,44 @@
         let filesProcessed = 0;
         let userEmail = null;
         let hasUnlockedCurrentFile = false;
-        const FREE_FILES = 1; // Free files without email
-        const FREE_FILES_WITH_EMAIL = 3; // Free files with email
+        const FREE_FILES = 2; // Free files without email
+        const FREE_FILES_WITH_EMAIL = 5; // Free files with email
         const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00';
+
+        // --- Analytics Tracking ---
+        const UserTracking = {
+            sessionId: Date.now().toString(),
+            events: [],
+            
+            track(eventName, data = {}) {
+                const event = {
+                    event: eventName,
+                    timestamp: new Date().toISOString(),
+                    sessionId: this.sessionId,
+                    email: userEmail || 'not_collected',
+                    filesProcessed: filesProcessed,
+                    ...data
+                };
+                
+                this.events.push(event);
+                console.log('Track:', eventName, data);
+                
+                // Send to Google Sheets
+                this.sendToBackend(event);
+            },
+            
+            sendToBackend(event) {
+                // Replace with your actual Apps Script URL
+                const scriptUrl = 'YOUR_APPS_SCRIPT_URL_HERE';
+                
+                fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {'Content-Type': 'text/plain'},
+                    body: JSON.stringify(event)
+                }).catch(err => console.log('Tracking error:', err));
+            }
+        };
         
         // --- Payment & File Limit Functions ---
         function checkFileLimit() {
