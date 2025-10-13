@@ -487,6 +487,12 @@
             console.log("filesProcessed:", filesProcessed);
             console.log("userEmail:", userEmail);
             
+            // DEV MODE: Bypass all limits
+            if (localStorage.getItem('plansift-dev-mode') === 'true') {
+                console.log("Dev mode - unlimited access");
+                return true;
+            }
+            
             if (userEmail) {
                 console.log(`Has email: ${filesProcessed} < ${FREE_FILES_WITH_EMAIL}`);
                 return filesProcessed < FREE_FILES_WITH_EMAIL;
@@ -495,6 +501,13 @@
                 return filesProcessed < FREE_FILES;
             }
         }
+
+                // Helper to disable dev mode
+                window.disableDevMode = function() {
+                    localStorage.removeItem('plansift-dev-mode');
+                    showNotification('Dev mode disabled', 'success');
+                    console.log('Dev mode disabled - reload page to take effect');
+                };
         
         function showEmailModal() {
             console.log("Showing email modal");
@@ -1529,7 +1542,22 @@
         // --- Initial Application Setup ---
         function init() {
             console.log("=== PlanSift Initializing ===");
-            runSearchBtn.disabled = true; 
+            
+            // DEV MODE: Check for dev mode in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('dev') === 'true') {
+                userEmail = 'dev@plansift.com';
+                localStorage.setItem('plansift-dev-mode', 'true');
+                showNotification('🔓 Dev mode activated - unlimited access', 'success');
+            }
+            
+            // Check for stored dev mode
+            if (localStorage.getItem('plansift-dev-mode') === 'true') {
+                userEmail = 'dev@plansift.com';
+            }
+            
+            runSearchBtn.disabled = true;
+            
             fileInput.addEventListener('change', handleFileSelect);
             UserTracking.track('session_start', {
                 referrer: document.referrer,
