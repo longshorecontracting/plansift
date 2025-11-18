@@ -358,15 +358,15 @@
     <!-- Email Capture Modal -->
     <div id="email-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-2xl font-bold text-slate-800 mb-4">Get 2 More Free Searches</h3>
-            <p class="text-slate-600 mb-6">Enter your email to continue with 2 additional free searches.</p>
-            
+            <h3 class="text-2xl font-bold text-slate-800 mb-4">Continue with More Free Files</h3>
+            <p class="text-slate-600 mb-6">Enter your email to unlock 30 additional free files. Approved users get unlimited access!</p>
+
             <input type="email" id="email-input" placeholder="your@email.com" class="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            
+
             <button id="submit-email-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-300 mb-3">
                 Continue Free
             </button>
-            
+
             <button id="close-email-modal-btn" class="w-full text-slate-500 hover:text-slate-700 font-medium">
                 Cancel
             </button>
@@ -441,10 +441,59 @@
         // Payment State
         let filesProcessed = 0;
         let userEmail = null;
+        let isWhitelisted = false;
         let hasUnlockedCurrentFile = false;
         const FREE_FILES = 50; // Free files without email
         const FREE_FILES_WITH_EMAIL = 80; // Free files with email
-        const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00';
+        const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_5kQ3cu2Reg5wgqE6LD0gw00'; // TODO: Replace with production link when ready
+
+        // --- Email Whitelist System ---
+        // SHA-256 hashes of approved email addresses (for security/obfuscation)
+        // To add new emails, generate hash with: echo -n "email@domain.com" | openssl dgst -sha256
+        const WHITELISTED_EMAIL_HASHES = [
+            '30c40f175b248a56f2478ad316f7e13ae185f63d5cbca29a739da0d1130cf1d0', // krystle@ellingtonind.com
+            'c2d78a9e109beeef8c42d88532fcf177476f307a732394f2bb61050614fb17cb', // admin@longshorecontracting.com
+            'd990056e9a4ae21e270b51bb8b5620d5da1f825836f21aa2175a8b2a3aec6be7', // sara@ellingtonind.com
+            'a9cde414c037f0c92bcb1c5cf73ffa688b791014ba959447b3ff1317075e9e65', // micah@ellingtonind.com
+            'b69a8364254ba6d128735de15eb6becfec72bc0ddfaa9f0490398bc80bfc1dd0', // hugh@ellingtonind.com
+            '3e200ff86d993e9fa54696f125fe6c22e0273397419d220b77631aabbaedb4cc', // ben@ellingtonind.com
+            'b40ec7ecf262b8d873f8842958da1913223bd10aab1f237668ab0eae6f3211bd'  // jonathan.bruce@longshorecontracting.com
+        ];
+
+        // Approved domains for auto-whitelist
+        const WHITELISTED_DOMAINS = ['ellingtonind.com', 'longshorecontracting.com'];
+
+        // Simple SHA-256 hash function for email verification
+        async function hashEmail(email) {
+            const msgBuffer = new TextEncoder().encode(email.toLowerCase().trim());
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Check if email is whitelisted
+        async function checkWhitelist(email) {
+            if (!email) return false;
+
+            const emailLower = email.toLowerCase().trim();
+
+            // Check domain whitelist
+            const domain = emailLower.split('@')[1];
+            if (domain && WHITELISTED_DOMAINS.includes(domain)) {
+                console.log('✓ Email approved via domain whitelist');
+                return true;
+            }
+
+            // Check specific email hashes
+            const hash = await hashEmail(emailLower);
+            const isApproved = WHITELISTED_EMAIL_HASHES.includes(hash);
+
+            if (isApproved) {
+                console.log('✓ Email approved via whitelist');
+            }
+
+            return isApproved;
+        }
 
         // --- Analytics Tracking ---
         const UserTracking = {
@@ -486,13 +535,14 @@
             console.log("=== checkFileLimit ===");
             console.log("filesProcessed:", filesProcessed);
             console.log("userEmail:", userEmail);
-            
-            // DEV MODE: Bypass all limits
-            if (localStorage.getItem('plansift-dev-mode') === 'true') {
-                console.log("Dev mode - unlimited access");
+            console.log("isWhitelisted:", isWhitelisted);
+
+            // Whitelisted users have unlimited access
+            if (isWhitelisted) {
+                console.log("✓ Whitelisted user - unlimited access");
                 return true;
             }
-            
+
             if (userEmail) {
                 console.log(`Has email: ${filesProcessed} < ${FREE_FILES_WITH_EMAIL}`);
                 return filesProcessed < FREE_FILES_WITH_EMAIL;
@@ -501,13 +551,6 @@
                 return filesProcessed < FREE_FILES;
             }
         }
-
-                // Helper to disable dev mode
-                window.disableDevMode = function() {
-                    localStorage.removeItem('plansift-dev-mode');
-                    showNotification('Dev mode disabled', 'success');
-                    console.log('Dev mode disabled - reload page to take effect');
-                };
         
         function showEmailModal() {
             console.log("Showing email modal");
@@ -550,25 +593,32 @@
                 showNotification('Please enter a valid email address.', 'error');
                 return;
             }
-    
-            UserTracking.track('email_submitted', { email: email });
-        
-            // First, save locally regardless of Apps Script success
+
+            // Check if email is whitelisted
+            const whitelisted = await checkWhitelist(email);
+            isWhitelisted = whitelisted;
+
+            UserTracking.track('email_submitted', {
+                email: email,
+                isWhitelisted: isWhitelisted
+            });
+
+            // Save locally
             userEmail = email;
             localStorage.setItem('plansift-user-email', email);
-            
+            localStorage.setItem('plansift-whitelisted', isWhitelisted.toString());
+
             // Try to save to Google Sheets (but don't block on failure)
             try {
-                // Use URL parameters as a fallback for CORS issues
                 const scriptUrl = 'https://script.google.com/macros/s/AKfycbybBpGmLa42qunUqQNEQZkwlWiVkdcMupxVi-yCJvqCwsmopZJ5HUzOyupis4nVg4GA/exec';
                 const params = new URLSearchParams({
                     email: email,
                     timestamp: new Date().toISOString(),
                     files_processed: filesProcessed.toString(),
-                    event: 'email_submitted'
+                    event: 'email_submitted',
+                    whitelisted: isWhitelisted.toString()
                 });
-                
-                // Try POST first
+
                 fetch(scriptUrl, {
                     method: 'POST',
                     headers: {
@@ -577,38 +627,50 @@
                     body: JSON.stringify({
                         email: email,
                         timestamp: new Date().toISOString(),
-                        files_processed: filesProcessed
+                        files_processed: filesProcessed,
+                        whitelisted: isWhitelisted
                     })
                 }).catch(err => {
-                    // If POST fails, try GET with parameters (less ideal but works)
                     console.log('POST failed, trying GET fallback');
                     return fetch(`${scriptUrl}?${params.toString()}`, {
                         method: 'GET',
                         mode: 'no-cors'
                     });
                 });
-                
+
                 console.log('Email submission attempted');
             } catch (error) {
                 console.error('Error saving email:', error);
-                // Continue anyway - don't block the user
             }
-            
+
             closeEmailModal();
-            
-            const remainingFiles = FREE_FILES_WITH_EMAIL - filesProcessed;
-            showNotification(`Thanks! You can now process ${remainingFiles} more file${remainingFiles !== 1 ? 's' : ''} for free.`, 'success');
-            
+
+            // Show appropriate message based on whitelist status
+            if (isWhitelisted) {
+                showNotification('✓ Welcome! You have unlimited access.', 'success');
+            } else {
+                const remainingFiles = FREE_FILES_WITH_EMAIL - filesProcessed;
+                showNotification(`Thanks! You can now process ${remainingFiles} more file${remainingFiles !== 1 ? 's' : ''} for free.`, 'success');
+            }
+
             continueFileLoad();
         }
         
-        function loadUserEmail() {
+        async function loadUserEmail() {
             const savedEmail = localStorage.getItem('plansift-user-email');
             if (savedEmail) {
                 userEmail = savedEmail;
                 console.log("Loaded saved email:", userEmail);
+
+                // Re-verify whitelist status on load
+                isWhitelisted = await checkWhitelist(savedEmail);
+                console.log("Whitelist status:", isWhitelisted);
+
+                if (isWhitelisted) {
+                    console.log("✓ Whitelisted user detected");
+                }
             }
-            
+
             // Also load files processed count
             const savedCount = localStorage.getItem('plansift-files-processed');
             if (savedCount) {
@@ -770,10 +832,15 @@
                     
                     runSearchBtn.disabled = false;
                     parseIndexBtn.classList.remove('hidden');
-                    
-                    const remaining = (userEmail ? FREE_FILES_WITH_EMAIL : FREE_FILES) - filesProcessed;
-                    if (remaining > 0) {
-                        showNotification(`File loaded! ${remaining} free file${remaining !== 1 ? 's' : ''} remaining.`, 'success');
+
+                    // Show appropriate notification based on user status
+                    if (isWhitelisted) {
+                        showNotification('File loaded! You have unlimited access.', 'success');
+                    } else {
+                        const remaining = (userEmail ? FREE_FILES_WITH_EMAIL : FREE_FILES) - filesProcessed;
+                        if (remaining > 0) {
+                            showNotification(`File loaded! ${remaining} free file${remaining !== 1 ? 's' : ''} remaining.`, 'success');
+                        }
                     }
                 } catch (error) {
                     console.error("Error loading PDF:", error);
@@ -1527,22 +1594,9 @@
         }
         
         // --- Initial Application Setup ---
-        function init() {
+        async function init() {
             console.log("=== PlanSift Initializing ===");
-            
-            // DEV MODE: Check for dev mode in URL
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('dev') === 'true') {
-                userEmail = 'dev@plansift.com';
-                localStorage.setItem('plansift-dev-mode', 'true');
-                showNotification('🔓 Dev mode activated - unlimited access', 'success');
-            }
-            
-            // Check for stored dev mode
-            if (localStorage.getItem('plansift-dev-mode') === 'true') {
-                userEmail = 'dev@plansift.com';
-            }
-            
+
             runSearchBtn.disabled = true;
             
             fileInput.addEventListener('change', handleFileSelect);
@@ -1620,7 +1674,7 @@
             });
         
             loadGroupsFromStorage();
-            loadUserEmail();
+            await loadUserEmail();
         }
             document.addEventListener('DOMContentLoaded', init);
         
